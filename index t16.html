@@ -1,0 +1,5318 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NotaCerta — Calculadora de Média do Secundário</title>
+  <style>
+/* =========================================================
+   NotaCerta — Design tokens
+   Direção: "boletim moderno" — números grandes em serif com
+   carácter (como uma pauta bem desenhada), interface limpa em
+   sans-serif, tudo assente em índigo profundo com sombras suaves.
+   ========================================================= */
+
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600;700;800&display=swap');
+
+:root {
+  --cor-principal: #4f46e5;
+  --cor-principal-escuro: #3730a3;
+  --cor-principal-claro: #818cf8;
+  --cor-acento: #d97706;
+  --cor-fundo: #f6f5f2;
+  --cor-texto: #1e1b2e;
+  --cor-texto-suave: #6b7280;
+  --cor-card: #ffffff;
+  --cor-borda: #e7e5e4;
+  --cor-bom: #16a34a;
+  --cor-mau: #dc2626;
+
+  --fonte-display: 'Fraunces', Georgia, serif;
+  --fonte-corpo: 'Inter', 'Segoe UI', Arial, sans-serif;
+
+  --raio-sm: 8px;
+  --raio-md: 14px;
+  --raio-lg: 22px;
+
+  --sombra-sm: 0 1px 3px rgba(30, 27, 46, 0.06), 0 1px 2px rgba(30, 27, 46, 0.04);
+  --sombra-md: 0 8px 24px rgba(30, 27, 46, 0.08), 0 2px 6px rgba(30, 27, 46, 0.04);
+  --sombra-lg: 0 20px 48px rgba(30, 27, 46, 0.14), 0 6px 16px rgba(30, 27, 46, 0.06);
+}
+
+body.tema-escuro {
+  --cor-principal-escuro: #6366f1;
+  --cor-fundo: #121016;
+  --cor-texto: #f0eef5;
+  --cor-texto-suave: #a09cb0;
+  --cor-card: #1c1a24;
+  --cor-borda: #322f3d;
+  --sombra-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+  --sombra-md: 0 8px 24px rgba(0, 0, 0, 0.35);
+  --sombra-lg: 0 20px 48px rgba(0, 0, 0, 0.45);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+body {
+  font-family: var(--fonte-corpo);
+  background-color: var(--cor-fundo);
+  color: var(--cor-texto);
+  margin: 0;
+  padding: 0;
+  transition: background-color 0.3s ease, color 0.3s ease;
+  -webkit-font-smoothing: antialiased;
+}
+
+:focus-visible {
+  outline: 2.5px solid var(--cor-principal);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ---- Landing Page ---- */
+#landing {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  padding: 2rem;
+  position: relative;
+  overflow: hidden;
+  background-color: var(--cor-principal-escuro);
+  background-image:
+    linear-gradient(160deg, rgba(55, 48, 163, 0.94), rgba(79, 70, 229, 0.88)),
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.055) 0px, rgba(255, 255, 255, 0.055) 1px, transparent 1px, transparent 34px),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.055) 0px, rgba(255, 255, 255, 0.055) 1px, transparent 1px, transparent 34px);
+}
+
+/* O atributo [hidden] tem menos especificidade do que #landing, por isso sem esta
+   regra o "display: flex" acima ganhava sempre e a landing nunca desaparecia
+   quando o JavaScript definia landing.hidden = true. */
+#landing[hidden] {
+  display: none;
+}
+
+#appContainer[hidden] {
+  display: none;
+}
+
+.landing-conteudo {
+  position: relative;
+  z-index: 2;
+  background-color: var(--cor-card);
+  border-radius: var(--raio-lg);
+  padding: 3.5rem 2.5rem;
+  text-align: center;
+  max-width: 480px;
+  width: 100%;
+  box-shadow: var(--sombra-lg);
+  animation: subir-suave 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ---- Assinatura visual: "recorte de pauta" flutuante ----
+   Um pedaço de boletim, inclinado, a espreitar atrás do cartão principal —
+   dá a ver, em ​miniatura, exatamente aquilo que a ferramenta calcula. */
+.pauta-flutuante {
+  position: absolute;
+  z-index: 1;
+  top: 6%;
+  right: 8%;
+  width: 230px;
+  background-color: var(--cor-card);
+  border-radius: var(--raio-md);
+  padding: 1.1rem 1.2rem 0.9rem 1.2rem;
+  transform: rotate(7deg);
+  box-shadow: var(--sombra-lg);
+  text-align: left;
+  opacity: 0.97;
+  animation: cair-de-lado 0.6s 0.15s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+
+@keyframes cair-de-lado {
+  from { opacity: 0; transform: rotate(16deg) translateY(-10px) translateX(14px); }
+  to { opacity: 0.97; transform: rotate(7deg) translateY(0) translateX(0); }
+}
+
+.pauta-flutuante::before {
+  content: '';
+  position: absolute;
+  top: -7px;
+  left: 22px;
+  width: 24px;
+  height: 14px;
+  background: var(--cor-acento);
+  border-radius: 0 0 4px 4px;
+  opacity: 0.85;
+}
+
+.pauta-flutuante-cabecalho {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  border-bottom: 1.5px dashed var(--cor-borda);
+  padding-bottom: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.pauta-flutuante-titulo {
+  font-family: var(--fonte-display);
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--cor-texto);
+}
+
+.pauta-flutuante-selo {
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--cor-bom);
+  font-weight: 700;
+}
+
+.pauta-flutuante-linha {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.32rem 0;
+  font-size: 0.78rem;
+  color: var(--cor-texto-suave);
+  border-bottom: 1px solid var(--cor-borda);
+}
+
+.pauta-flutuante-linha:last-of-type {
+  border-bottom: none;
+}
+
+.pauta-flutuante-linha strong {
+  font-family: var(--fonte-display);
+  color: var(--cor-principal);
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+.pauta-flutuante-media {
+  margin-top: 0.6rem;
+  padding-top: 0.55rem;
+  border-top: 1.5px solid var(--cor-texto);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.pauta-flutuante-media span:first-child {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--cor-texto-suave);
+}
+
+.pauta-flutuante-media span:last-child {
+  font-family: var(--fonte-display);
+  font-weight: 700;
+  font-size: 1.5rem;
+  color: var(--cor-bom);
+}
+
+@media (max-width: 620px) {
+  .pauta-flutuante {
+    display: none;
+  }
+}
+
+@keyframes subir-suave {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.logo-circulo {
+  width: 68px;
+  height: 68px;
+  background: linear-gradient(135deg, var(--cor-principal), var(--cor-principal-claro));
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--fonte-display);
+  font-weight: 700;
+  font-size: 1.5rem;
+  margin: 0 auto 1.5rem auto;
+  box-shadow: 0 8px 20px rgba(79, 70, 229, 0.35);
+}
+
+#landing h1 {
+  font-family: var(--fonte-display);
+  font-weight: 600;
+  font-size: 2.3rem;
+  letter-spacing: -0.02em;
+  margin: 0 0 0.8rem 0;
+  color: var(--cor-texto);
+}
+
+.landing-slogan {
+  font-size: 1.05rem;
+  color: var(--cor-texto-suave);
+  margin-bottom: 2rem;
+  line-height: 1.6;
+}
+
+.landing-botoes {
+  display: flex;
+  gap: 0.8rem;
+  justify-content: center;
+  margin-bottom: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.landing-botoes button {
+  padding: 0.85rem 1.7rem;
+  font-family: var(--fonte-corpo);
+  font-size: 1rem;
+  font-weight: 600;
+  border-radius: 999px;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease;
+}
+
+.botao-comecar {
+  background-color: var(--cor-principal);
+  color: white;
+  box-shadow: 0 6px 16px rgba(79, 70, 229, 0.3);
+}
+
+.botao-comecar:hover {
+  background-color: var(--cor-principal-escuro);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 22px rgba(79, 70, 229, 0.4);
+}
+
+.botao-secundario {
+  background-color: transparent;
+  color: var(--cor-texto-suave);
+  border: 1.5px solid var(--cor-borda) !important;
+}
+
+.botao-secundario:hover {
+  background-color: var(--cor-fundo);
+  color: var(--cor-texto);
+  transform: translateY(-2px);
+}
+
+button:active {
+  transform: translateY(0);
+}
+
+.como-funciona {
+  background-color: var(--cor-fundo);
+  border-radius: var(--raio-md);
+  padding: 1.2rem 1.4rem;
+  text-align: left;
+  font-size: 0.9rem;
+  line-height: 1.6;
+  margin-top: 1.5rem;
+  color: var(--cor-texto-suave);
+}
+
+.como-funciona p {
+  margin: 0.5rem 0;
+}
+
+/* ---- Aplicação Principal ---- */
+header {
+  position: relative;
+  background-color: var(--cor-principal-escuro);
+  background-image:
+    linear-gradient(150deg, rgba(55, 48, 163, 0.96), rgba(79, 70, 229, 0.92)),
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.05) 0px, rgba(255, 255, 255, 0.05) 1px, transparent 1px, transparent 30px),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.05) 0px, rgba(255, 255, 255, 0.05) 1px, transparent 1px, transparent 30px);
+  color: white;
+  padding: 3rem 1rem 2.5rem 1rem;
+  text-align: center;
+}
+
+header h1 {
+  font-family: var(--fonte-display);
+  font-weight: 600;
+  margin: 0 0 0.5rem 0;
+  font-size: 2.1rem;
+  letter-spacing: -0.02em;
+}
+
+header p {
+  color: rgba(255, 255, 255, 0.85);
+  margin: 0;
+}
+
+.botao-tema {
+  position: absolute;
+  top: 1.2rem;
+  right: 1.2rem;
+  background-color: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  width: 2.5rem;
+  height: 2.5rem;
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: background-color 0.2s, transform 0.2s;
+}
+
+.botao-tema:hover {
+  background-color: rgba(255, 255, 255, 0.28);
+  transform: scale(1.08);
+}
+
+main {
+  max-width: 760px;
+  margin: -2rem auto 3rem auto;
+  padding: 0 1.2rem;
+  position: relative;
+}
+
+section {
+  background-color: var(--cor-card);
+  border: 1px solid var(--cor-borda);
+  border-radius: var(--raio-lg);
+  padding: 1.7rem;
+  margin-bottom: 1.4rem;
+  box-shadow: var(--sombra-md);
+}
+
+h2 {
+  margin-top: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--cor-texto);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+select, input[type="text"], input[type="number"] {
+  border: 1.5px solid var(--cor-borda);
+  border-radius: var(--raio-sm);
+  font-family: var(--fonte-corpo);
+  font-size: 1rem;
+  padding: 0.65rem 0.8rem;
+  background-color: var(--cor-card);
+  color: var(--cor-texto);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+select:focus, input[type="text"]:focus, input[type="number"]:focus {
+  border-color: var(--cor-principal);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+}
+
+#curso-section select {
+  width: 100%;
+}
+
+.ajuda {
+  font-size: 0.82rem;
+  color: var(--cor-texto-suave);
+  margin: 0.7rem 0 0 0;
+  line-height: 1.5;
+}
+
+.tabela-scroll {
+  overflow-x: auto;
+  border-radius: var(--raio-sm);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 680px;
+}
+
+th {
+  text-align: left;
+  padding: 0.6rem 0.5rem;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--cor-texto-suave);
+  font-weight: 700;
+  border-bottom: 2px solid var(--cor-borda);
+}
+
+td {
+  text-align: left;
+  padding: 0.55rem 0.5rem;
+  border-bottom: 1px solid var(--cor-borda);
+  font-size: 0.88rem;
+}
+
+tbody tr {
+  transition: background-color 0.15s ease;
+}
+
+tbody tr:hover {
+  background-color: var(--cor-fundo);
+}
+
+td input[type="text"],
+td input[type="number"] {
+  width: 58px;
+  padding: 0.4rem 0.5rem;
+  font-size: 0.88rem;
+  border-radius: 7px;
+}
+
+td input[type="number"]:disabled {
+  background-color: var(--cor-fundo);
+  color: var(--cor-borda);
+  cursor: not-allowed;
+  border-color: var(--cor-borda);
+}
+
+td input[type="text"].nome-input {
+  width: 150px;
+  font-weight: 600;
+}
+
+td input[type="number"].exame-input {
+  width: 70px;
+}
+
+.exame-celula {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.exame-valores {
+  font-size: 0.72rem;
+  color: var(--cor-texto-suave);
+}
+
+.cif-valor, .final-valor {
+  font-family: var(--fonte-display);
+  font-weight: 600;
+  font-size: 1.05rem;
+  color: var(--cor-principal);
+}
+
+#botaoAdicionar {
+  margin-top: 1.2rem;
+  background-color: transparent;
+  color: var(--cor-principal);
+  border: 1.5px dashed var(--cor-principal-claro);
+  border-radius: var(--raio-sm);
+  padding: 0.6rem 1.1rem;
+  font-family: var(--fonte-corpo);
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+#botaoAdicionar:hover {
+  background-color: var(--cor-fundo);
+  border-color: var(--cor-principal);
+}
+
+.botao-remover {
+  background-color: transparent;
+  color: var(--cor-mau);
+  border: none;
+  cursor: pointer;
+  font-size: 1.15rem;
+  padding: 0.2rem;
+  border-radius: 6px;
+  transition: background-color 0.15s ease;
+}
+
+.botao-remover:hover {
+  background-color: rgba(220, 38, 38, 0.1);
+}
+
+/* ---- Grid de Resumos ---- */
+.resumo-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr;
+  gap: 0.9rem;
+}
+
+@media (max-width: 600px) {
+  .resumo-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.resumo-card {
+  background-color: var(--cor-fundo);
+  border-radius: var(--raio-md);
+  padding: 1.1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  transition: transform 0.15s ease;
+}
+
+.resumo-card.destaque {
+  background-color: var(--cor-principal-escuro);
+  background-image:
+    linear-gradient(150deg, rgba(55, 48, 163, 0.96), rgba(79, 70, 229, 0.92)),
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.05) 0px, rgba(255, 255, 255, 0.05) 1px, transparent 1px, transparent 26px),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.05) 0px, rgba(255, 255, 255, 0.05) 1px, transparent 1px, transparent 26px);
+  color: white;
+  box-shadow: var(--sombra-md);
+}
+
+.resumo-label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  opacity: 0.85;
+  font-weight: 700;
+}
+
+.resumo-valor {
+  font-family: var(--fonte-display);
+  font-size: 2.4rem;
+  font-weight: 600;
+  line-height: 1.15;
+  transition: color 0.3s ease, transform 0.3s ease;
+}
+
+.resumo-valor.pulso {
+  transform: scale(1.1);
+}
+
+.resumo-valor-pequeno {
+  font-family: var(--fonte-display);
+  font-size: 1.05rem;
+  font-weight: 600;
+  margin-top: 0.4rem;
+  word-break: break-word;
+  color: var(--cor-texto);
+}
+
+.resumo-sub {
+  font-size: 0.75rem;
+  opacity: 0.85;
+}
+
+.resumo-valor.subiu {
+  color: #4ade80 !important;
+}
+
+.resumo-valor.desceu {
+  color: #f87171 !important;
+}
+
+/* ---- Barra de Progresso ---- */
+.barra-progresso {
+  width: 100%;
+  height: 7px;
+  background-color: rgba(255, 255, 255, 0.25);
+  border-radius: 999px;
+  margin-top: 0.7rem;
+  overflow: hidden;
+}
+
+.barra-progresso-preenchida {
+  height: 100%;
+  background-color: white;
+  border-radius: 999px;
+  transition: width 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  width: 0%;
+}
+
+/* ---- Painéis do Simulador ---- */
+.menu-radio {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.menu-radio label {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  cursor: pointer;
+  font-size: 0.92rem;
+  padding: 0.5rem 0.6rem;
+  border-radius: var(--raio-sm);
+  transition: background-color 0.15s ease;
+}
+
+.menu-radio label:hover {
+  background-color: var(--cor-fundo);
+}
+
+.painel-simulador {
+  border-top: 1px dashed var(--cor-borda);
+  padding-top: 1.1rem;
+  margin-top: 0.4rem;
+}
+
+.simulador-form {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.8rem;
+  flex-wrap: wrap;
+}
+
+.simulador-form select,
+.simulador-form input {
+  flex: 1;
+  min-width: 150px;
+}
+
+.simulador-form button {
+  background-color: var(--cor-principal);
+  color: white;
+  border: none;
+  border-radius: var(--raio-sm);
+  padding: 0.65rem 1.3rem;
+  font-family: var(--fonte-corpo);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s ease, transform 0.15s ease;
+}
+
+.simulador-form button:hover {
+  background-color: var(--cor-principal-escuro);
+  transform: translateY(-1px);
+}
+
+.resultado-simulacao, .resultado-ese {
+  margin-top: 1rem;
+  padding: 1rem 1.2rem;
+  border-radius: var(--raio-sm);
+  font-size: 0.95rem;
+  font-weight: 600;
+  background-color: var(--cor-fundo);
+}
+
+.resultado-simulacao.ok {
+  border-left: 4px solid var(--cor-bom);
+}
+
+.resultado-simulacao.impossivel {
+  border-left: 4px solid var(--cor-mau);
+}
+
+.resultado-ese {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  flex-wrap: wrap;
+}
+
+.resultado-ese .seta {
+  color: var(--cor-texto-suave);
+  font-weight: 400;
+}
+
+.resultado-ese .delta {
+  font-size: 0.85rem;
+  margin-left: auto;
+  padding: 0.25rem 0.7rem;
+  border-radius: 999px;
+  font-weight: 700;
+}
+
+.resultado-ese .delta.subiu {
+  background-color: rgba(22, 163, 74, 0.15);
+  color: var(--cor-bom);
+}
+
+.resultado-ese .delta.desceu {
+  background-color: rgba(220, 38, 38, 0.15);
+  color: var(--cor-mau);
+}
+
+/* ---- Painel de Candidatura ---- */
+.curso-detalhe {
+  background-color: var(--cor-fundo);
+  border-radius: var(--raio-md);
+  padding: 1.1rem 1.2rem;
+  margin-top: 1rem;
+}
+
+.curso-detalhe-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.9rem;
+  margin-bottom: 0.4rem;
+}
+
+.curso-detalhe-label {
+  display: block;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--cor-texto-suave);
+  font-weight: 700;
+}
+
+.curso-detalhe-valor {
+  display: block;
+  font-family: var(--fonte-display);
+  font-weight: 600;
+  font-size: 1.15rem;
+  color: var(--cor-texto);
+  margin-top: 0.15rem;
+}
+
+.cand-provas-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin: 0.6rem 0;
+}
+
+.cand-provas-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.78rem;
+  color: var(--cor-texto-suave);
+  font-weight: 600;
+  flex: 1;
+  min-width: 140px;
+}
+
+.cand-resultado-nota {
+  font-family: var(--fonte-display);
+  font-size: 1.7rem;
+  font-weight: 600;
+}
+
+.cand-resultado-linha {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.88rem;
+  padding: 0.2rem 0;
+}
+
+.cand-legenda {
+  display: flex;
+  gap: 1.1rem;
+  flex-wrap: wrap;
+  font-size: 0.78rem;
+  color: var(--cor-texto-suave);
+  margin-top: 0.9rem;
+  padding-top: 0.7rem;
+  border-top: 1px dashed var(--cor-borda);
+}
+
+.cand-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  margin-top: 1rem;
+  max-height: 620px;
+  overflow-y: auto;
+  padding-right: 0.2rem;
+}
+
+.cand-card {
+  background-color: var(--cor-fundo);
+  border: 1px solid var(--cor-borda);
+  border-radius: var(--raio-md);
+  padding: 0.9rem 1.05rem;
+}
+
+.cand-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.6rem;
+}
+
+.cand-card-titulo {
+  font-family: var(--fonte-display);
+  font-weight: 600;
+  font-size: 0.96rem;
+  color: var(--cor-texto);
+  line-height: 1.3;
+}
+
+.cand-card-instituicao {
+  font-size: 0.76rem;
+  color: var(--cor-texto-suave);
+  margin-top: 0.1rem;
+}
+
+.cand-badge {
+  font-size: 1.35rem;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.cand-card-notas {
+  display: flex;
+  gap: 1.4rem;
+  margin-top: 0.65rem;
+  flex-wrap: wrap;
+}
+
+.cand-card-nota-label {
+  display: block;
+  font-size: 0.66rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--cor-texto-suave);
+  font-weight: 700;
+}
+
+.cand-card-nota-valor {
+  display: block;
+  font-family: var(--fonte-display);
+  font-weight: 700;
+  font-size: 1.15rem;
+  margin-top: 0.1rem;
+}
+
+.cand-card-provas {
+  margin-top: 0.55rem;
+  font-size: 0.76rem;
+  color: var(--cor-texto-suave);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 0.9rem;
+  align-items: center;
+}
+
+.cand-card-provas strong {
+  color: var(--cor-texto);
+  font-weight: 600;
+}
+
+.cand-prova-mini-input {
+  width: 74px;
+  padding: 0.2rem 0.35rem;
+  font-size: 0.78rem;
+  border-radius: 6px;
+  border: 1.5px solid var(--cor-borda);
+  background-color: var(--cor-card);
+  color: var(--cor-texto);
+}
+
+/* Remover as setas do input number em Chrome/Safari, que ocupavam espaço
+   à direita e comprimiam ainda mais o número escrito. */
+.cand-prova-mini-input::-webkit-outer-spin-button,
+.cand-prova-mini-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.cand-card-aviso {
+  font-size: 0.74rem;
+  color: var(--cor-texto-suave);
+  margin-top: 0.4rem;
+  font-style: italic;
+}
+
+.cand-sem-resultados {
+  text-align: center;
+  color: var(--cor-texto-suave);
+  font-size: 0.88rem;
+  padding: 1.5rem 0;
+}
+
+footer {
+  text-align: center;
+  padding: 2rem 1rem;
+  font-size: 0.8rem;
+  color: var(--cor-texto-suave);
+}
+
+.link-rodape {
+  display: block;
+  margin: 0.8rem auto 0 auto;
+  background: none;
+  border: none;
+  color: var(--cor-principal);
+  font-family: var(--fonte-corpo);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.link-rodape:hover {
+  color: var(--cor-principal-escuro);
+}
+
+#comoCalculamos .formula-bloco {
+  background-color: var(--cor-fundo);
+  border-radius: var(--raio-sm);
+  padding: 1rem 1.2rem;
+  margin-bottom: 1.2rem;
+  overflow-x: auto;
+}
+
+.formula-linha {
+  font-family: 'Courier New', monospace;
+  font-size: 0.85rem;
+  color: var(--cor-principal);
+  margin: 0.3rem 0;
+  white-space: nowrap;
+}
+
+.glossario {
+  margin: 0 0 1.2rem 0;
+}
+
+.glossario dt {
+  font-family: var(--fonte-display);
+  font-weight: 600;
+  color: var(--cor-texto);
+  margin-top: 0.6rem;
+}
+
+.glossario dd {
+  margin: 0.15rem 0 0 0;
+  color: var(--cor-texto-suave);
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+.aviso-legal {
+  font-size: 0.78rem;
+  color: var(--cor-texto-suave);
+  background-color: var(--cor-fundo);
+  border-left: 3px solid var(--cor-acento);
+  padding: 0.9rem 1.1rem;
+  border-radius: 0 var(--raio-sm) var(--raio-sm) 0;
+  line-height: 1.6;
+  margin-top: 1.2rem;
+}
+
+.aviso-legal a {
+  color: var(--cor-principal);
+}
+
+/* ---- Modo telemóvel: tabela vira cartões ---- */
+@media (max-width: 640px) {
+  .tabela-scroll {
+    overflow-x: visible;
+  }
+
+  table {
+    min-width: 0;
+  }
+
+  thead {
+    display: none;
+  }
+
+  table, tbody, tr, td {
+    display: block;
+    width: 100%;
+  }
+
+  tbody tr:hover {
+    background-color: transparent;
+  }
+
+  tr {
+    border: 1px solid var(--cor-borda);
+    border-radius: var(--raio-md);
+    padding: 0.9rem;
+    margin-bottom: 0.8rem;
+    background-color: var(--cor-fundo);
+  }
+
+  td {
+    border: none;
+    padding: 0.35rem 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  td::before {
+    content: attr(data-label);
+    font-weight: 600;
+    font-size: 0.8rem;
+    color: var(--cor-texto-suave);
+    margin-right: 0.6rem;
+  }
+
+  td input[type="text"].nome-input {
+    width: 60%;
+    font-weight: 700;
+    font-size: 1rem;
+  }
+
+  td input[type="number"] {
+    width: 70px;
+  }
+
+  .exame-celula {
+    align-items: flex-end;
+  }
+}
+
+/* =========================================================
+   Impressão / Exportação para PDF
+   Objetivo: uma pauta limpa em papel A4, sem botões, sem
+   pesquisas, sem modo escuro e sem elementos interativos —
+   só a informação que o aluno quer guardar ou entregar.
+   ========================================================= */
+
+@media print {
+
+  @page {
+    size: A4;
+    margin: 14mm 12mm;
+  }
+
+  /* Forçar sempre o tema claro no papel, mesmo que o ecrã
+     esteja em modo escuro — poupa tinta e garante legibilidade. */
+  body,
+  body.tema-escuro {
+    --cor-principal: #4f46e5;
+    --cor-principal-escuro: #3730a3;
+    --cor-principal-claro: #818cf8;
+    --cor-acento: #b45309;
+    --cor-fundo: #ffffff;
+    --cor-texto: #111111;
+    --cor-texto-suave: #444444;
+    --cor-card: #ffffff;
+    --cor-borda: #999999;
+    --cor-bom: #15803d;
+    --cor-mau: #b91c1c;
+    background: #ffffff !important;
+    color: #111111 !important;
+  }
+
+  * {
+    box-shadow: none !important;
+    text-shadow: none !important;
+    animation: none !important;
+    transition: none !important;
+  }
+
+  /* A landing nunca deve imprimir, mesmo que por acaso esteja visível */
+  #landing {
+    display: none !important;
+  }
+
+  #appContainer {
+    display: block !important;
+  }
+
+  /* ---- Cabeçalho ---- */
+  header {
+    text-align: left;
+    padding: 0 0 0.6rem 0;
+    margin-bottom: 0.8rem;
+    border-bottom: 2px solid #111111;
+  }
+
+  header h1 {
+    font-size: 1.5rem;
+  }
+
+  header h1::after {
+    content: " — pauta simulada";
+    font-family: var(--fonte-corpo);
+    font-size: 0.65em;
+    font-weight: 500;
+    color: #444444;
+  }
+
+  header p {
+    font-size: 0.8rem;
+    color: #444444;
+  }
+
+  /* ---- Elementos de interface que não fazem sentido no papel ---- */
+  .botao-tema,
+  #botaoAdicionar,
+  .botao-remover,
+  #simulador,
+  #comoCalculamos,
+  #botaoComoCalculamos,
+  #botaoImprimir,
+  .link-rodape,
+  .ajuda,
+  thead th:last-child,
+  tbody td:last-child {
+    display: none !important;
+  }
+
+  #curso-section select#curso {
+    appearance: none;
+    -webkit-appearance: none;
+    border: none;
+    background: transparent;
+    padding: 0;
+    font-family: var(--fonte-display);
+    font-weight: 600;
+    font-size: 1.05rem;
+    color: #111111;
+  }
+
+  /* ---- Tabela de disciplinas: a peça central da pauta ---- */
+  .tabela-scroll {
+    overflow: visible;
+    border: none;
+  }
+
+  table {
+    min-width: 0;
+    width: 100%;
+    font-size: 0.82rem;
+  }
+
+  thead {
+    position: static;
+  }
+
+  th, td {
+    border: 1px solid #999999;
+    padding: 0.35rem 0.5rem;
+    background: #ffffff !important;
+    color: #111111 !important;
+  }
+
+  th {
+    background: #ececec !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  tr {
+    break-inside: avoid;
+  }
+
+  /* Inputs e select dentro da tabela devem parecer texto normal, não caixas */
+  td input,
+  td select {
+    appearance: none;
+    -webkit-appearance: none;
+    border: none;
+    background: transparent;
+    padding: 0;
+    width: auto;
+    max-width: 100%;
+    color: #111111 !important;
+    font-family: var(--fonte-corpo);
+  }
+
+  td input[type="number"] {
+    text-align: center;
+  }
+
+  td select {
+    pointer-events: none;
+  }
+
+  td input[type="checkbox"] {
+    transform: scale(1.1);
+  }
+
+  .final-valor {
+    font-weight: 700;
+  }
+
+  .exame-valores {
+    display: inline;
+  }
+
+  /* ---- Resumo ---- */
+  #resumo {
+    break-inside: avoid;
+    margin-top: 1rem;
+  }
+
+  .resumo-grid {
+    grid-template-columns: 2fr 1fr 1fr 1fr;
+    gap: 0.5rem;
+  }
+
+  .resumo-card {
+    border: 1px solid #999999;
+    background: #ffffff !important;
+    padding: 0.6rem;
+  }
+
+  .resumo-card.destaque {
+    background: #ffffff !important;
+    background-image: none !important;
+    color: #111111 !important;
+    border: 2px solid #111111;
+  }
+
+  .resumo-card.destaque .resumo-label,
+  .resumo-card.destaque .resumo-valor,
+  .resumo-card.destaque .resumo-sub {
+    color: #111111 !important;
+  }
+
+  .barra-progresso {
+    border: 1px solid #999999;
+  }
+
+  .barra-progresso-preenchida {
+    background: #999999 !important;
+  }
+
+  /* ---- Rodapé: mantemos só a nota informativa, sem o botão ---- */
+  footer {
+    margin-top: 1.2rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid #999999;
+    font-size: 0.72rem;
+    color: #444444;
+    text-align: left;
+  }
+
+  footer::after {
+    content: "Documento gerado a partir do NotaCerta — fins meramente informativos, não substitui a pauta oficial da escola.";
+    display: block;
+    margin-top: 0.3rem;
+    font-style: italic;
+  }
+}
+
+  </style>
+</head>
+<body>
+
+  <!-- Página inicial -->
+  <section id="landing">
+    <div class="pauta-flutuante" aria-hidden="true">
+      <div class="pauta-flutuante-cabecalho">
+        <span class="pauta-flutuante-titulo">A tua pauta</span>
+        <span class="pauta-flutuante-selo">✓ atualizada</span>
+      </div>
+      <div class="pauta-flutuante-linha"><span>Matemática A</span><strong>17,4</strong></div>
+      <div class="pauta-flutuante-linha"><span>Português</span><strong>15,9</strong></div>
+      <div class="pauta-flutuante-linha"><span>Física e Química A</span><strong>16,1</strong></div>
+      <div class="pauta-flutuante-media">
+        <span>Média final</span>
+        <span>16,7</span>
+      </div>
+    </div>
+    <div class="landing-conteudo">
+      <div class="logo-circulo">NC</div>
+      <h1>🎓 NotaCerta</h1>
+      <p class="landing-slogan">A forma mais simples de calcular a tua média do secundário e simular exames.</p>
+      <div class="landing-botoes">
+        <button id="botaoComecar" class="botao-comecar">🟢 Começar</button>
+        <button id="botaoComoFunciona" class="botao-secundario">🔵 Como funciona</button>
+      </div>
+      <div id="comoFunciona" class="como-funciona" hidden>
+        <p>1. Escolhe o teu curso — as disciplinas aparecem automaticamente.</p>
+        <p>2. Mete as notas de cada ano — a CIF é calculada sozinha.</p>
+        <p>3. Mete a nota de exame nas disciplinas onde foste — a nota final é calculada com a fórmula oficial.</p>
+        <p>4. Usa o simulador para testar "e se" mudasses uma nota, ou para saber quanto precisas tirar num exame.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Aplicação -->
+  <div id="appContainer" hidden>
+  <header>
+    <button id="botaoTema" class="botao-tema" title="Mudar tema">🌙</button>
+    <h1>🎓 NotaCerta</h1>
+    <p>Escolhe o teu curso, mete as notas, e vê a tua média a atualizar em tempo real.</p>
+  </header>
+
+  <main>
+    <section id="curso-section">
+      <h2>1. O teu curso</h2>
+      <select id="curso">
+        <option value="">— Escolhe o curso —</option>
+        <option value="Ciências e Tecnologias">Ciências e Tecnologias</option>
+        <option value="Ciências Socioeconómicas">Ciências Socioeconómicas</option>
+        <option value="Línguas e Humanidades">Línguas e Humanidades</option>
+        <option value="Artes Visuais">Artes Visuais</option>
+      </select>
+      <p class="ajuda">As disciplinas do teu curso aparecem automaticamente. Se a tua escola tiver opções diferentes (ex: outra disciplina bienal), podes editar o nome de qualquer linha.</p>
+    </section>
+
+    <section id="tabela-disciplinas">
+      <h2>2. As tuas notas</h2>
+      <div class="tabela-scroll">
+        <table id="tabelaNotas">
+          <thead>
+            <tr>
+              <th>Disciplina</th>
+              <th>Duração</th>
+              <th>10º</th>
+              <th>11º</th>
+              <th>12º</th>
+              <th>CIF</th>
+              <th>Exame</th>
+              <th>Exame conta?</th>
+              <th>Nota final</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- linhas geradas via JavaScript -->
+          </tbody>
+        </table>
+      </div>
+      <button id="botaoAdicionar" type="button">+ Adicionar disciplina extra</button>
+      <p class="ajuda">A fórmula é aplicada automaticamente de acordo com as regras em vigor (atualmente 75% CIF + 25% exame, quando o exame conta). Escreve o exame em pontos (0–200), como sai na pauta — convertemos para valores automaticamente. Tens de escolher exatamente 2 disciplinas (além de Português) para ir a exame. A <strong>duração</strong> de cada disciplina (trienal/bienal/anual) determina o peso na média final — uma trienal pesa o triplo de uma anual.</p>
+    </section>
+
+    <section id="resumo">
+      <h2>3. Resumo</h2>
+      <div class="resumo-grid">
+        <div class="resumo-card destaque">
+          <span class="resumo-label">📊 Média</span>
+          <span class="resumo-valor" id="mediaGeral">--</span>
+          <span class="resumo-sub" id="mediaPontos">-- pontos</span>
+          <div class="barra-progresso">
+            <div class="barra-progresso-preenchida" id="barraMedia"></div>
+          </div>
+        </div>
+        <div class="resumo-card">
+          <span class="resumo-label">🔼 Maior nota</span>
+          <span class="resumo-valor-pequeno" id="maiorNota">--</span>
+        </div>
+        <div class="resumo-card">
+          <span class="resumo-label">🔽 Menor nota</span>
+          <span class="resumo-valor-pequeno" id="menorNota">--</span>
+        </div>
+        <div class="resumo-card">
+          <span class="resumo-label">📚 Disciplinas</span>
+          <span class="resumo-valor-pequeno" id="numDisciplinas">0</span>
+        </div>
+      </div>
+    </section>
+
+    <section id="simulador">
+      <h2>🔮 Simulador</h2>
+      <p class="ajuda">Quero...</p>
+      <div class="menu-radio">
+        <label><input type="radio" name="modoSimulador" value="meta" checked> 🎯 saber que nota preciso para atingir uma média</label>
+        <label><input type="radio" name="modoSimulador" value="ese"> 🔄 testar "E se..." (mudar uma nota e ver o efeito)</label>
+        <label><input type="radio" name="modoSimulador" value="candidatura"> 🏛️ simular candidatura a um curso</label>
+      </div>
+
+      <!-- Modo: Que nota preciso -->
+      <div id="painelMeta" class="painel-simulador">
+        <p class="ajuda">Escolhe uma disciplina onde ainda vais a exame e diz a média que queres atingir.</p>
+        <div class="simulador-form">
+          <select id="simDisciplina"></select>
+          <input type="number" id="simMediaAlvo" min="0" max="20" step="0.1" placeholder="Média desejada (ex: 18)">
+          <button id="botaoSimular" type="button">Calcular</button>
+        </div>
+        <p id="resultadoSimulacao" class="resultado-simulacao"></p>
+      </div>
+
+      <!-- Modo: E se... -->
+      <div id="painelEse" class="painel-simulador" hidden>
+        <p class="ajuda">Escolhe uma disciplina e testa um valor hipotético — sem alterar os teus dados reais.</p>
+        <div class="simulador-form">
+          <select id="eseDisciplina"></select>
+          <select id="eseCampo">
+            <option value="n10">10º ano</option>
+            <option value="n11">11º ano</option>
+            <option value="n12">12º ano</option>
+            <option value="exame">Exame (0-200)</option>
+          </select>
+        </div>
+        <p class="ajuda">Valor atual: <strong id="eseValorAtual">--</strong></p>
+        <div class="simulador-form">
+          <input type="number" id="eseValor" step="0.1" placeholder="Novo valor">
+          <button id="botaoEse" type="button">Simular</button>
+        </div>
+        <div id="resultadoEse" class="resultado-ese"></div>
+      </div>
+
+      <!-- Modo: Candidatura -->
+      <div id="painelCandidatura" class="painel-simulador" hidden>
+        <p class="ajuda">Lista alfabética de <strong>108 cursos</strong> — a nota de candidatura é calculada automaticamente com as tuas notas de exame já preenchidas na secção 2. Estamos a verificar cada curso individualmente na DGES (provas de ingresso exatas, peso média/provas e nota mínima) — <strong>15 já confirmados</strong>, os restantes usam o padrão mais comum enquanto vamos confirmando. Desde 2025 a lei permite à instituição escolher o peso da média (40-50%) e das provas (45-60%) — a média nunca pode pesar mais que as provas. Para todos os outros cursos, consulta <a href="https://www.dges.gov.pt/" target="_blank" rel="noopener">dges.gov.pt</a>.</p>
+
+        <div class="simulador-form">
+          <input type="text" id="candBusca" placeholder="🔎 Procurar curso ou instituição...">
+        </div>
+        <div class="simulador-form">
+          <select id="candArea">
+            <option value="">— Filtrar por área (opcional) —</option>
+          </select>
+        </div>
+        <div class="simulador-form">
+          <label style="flex:1; min-width:150px; display:flex; align-items:center; gap:0.5rem; font-size:0.88rem;">
+            <input type="checkbox" id="candUsarMediaAtual" checked style="width:auto;">
+            Usar a minha média calculada acima
+          </label>
+          <input type="number" id="candMediaManual" min="0" max="20" step="0.01" placeholder="Média (0-20)" disabled>
+        </div>
+
+        <div class="cand-legenda">
+          <span>🟢 Provável entrar</span>
+          <span>🟡 Possível entrar</span>
+          <span>🔴 Improvável entrar</span>
+        </div>
+
+        <div id="candLista" class="cand-lista"></div>
+
+        <p class="ajuda">⚠️ As notas do último colocado referem-se à 1ª fase do Concurso Nacional de Acesso de 2025 e variam todos os anos consoante a procura e o nº de vagas. É uma estimativa, não uma garantia de entrada. Fonte: DGES.</p>
+      </div>
+    </section>
+
+    <section id="comoCalculamos" hidden>
+      <h2>📐 Como calculámos a tua média</h2>
+
+      <div class="formula-bloco">
+        <p class="formula-linha">CFD = (7,5 × CIF + 2,5 × CE/10) / 10 → arredondada à unidade</p>
+        <p class="formula-linha">CFC = Σ(CFD × peso) / Σ(pesos) → décimas, sem arredondamento</p>
+      </div>
+
+      <dl class="glossario">
+        <dt>CIF</dt>
+        <dd>Classificação Interna Final (0–20) — média das notas internas dos anos em que a disciplina existe.</dd>
+        <dt>CE</dt>
+        <dd>Classificação do Exame (0–200), convertida automaticamente para a escala de 0–20.</dd>
+        <dt>CFD</dt>
+        <dd>Classificação Final da Disciplina — CIF sozinha, ou CIF + exame quando o exame conta.</dd>
+        <dt>CFC</dt>
+        <dd>Classificação Final de Curso (a tua média do secundário) — média ponderada de todas as CFD, com peso 3 para trienais, 2 para bienais, 1 para anuais.</dd>
+      </dl>
+
+      <p class="ajuda">A <strong>Média do Secundário</strong> mostrada nesta página é a CFC — a média ponderada das classificações finais das disciplinas do teu curso. Não inclui provas de ingresso; essas entram só na nota de candidatura ao ensino superior (funcionalidade "🏛️ simular candidatura", ainda em preparação).</p>
+
+      <p class="ajuda"><strong>Base legal:</strong> Portaria n.º 226-A/2018, de 7 de agosto (alterada pela Portaria n.º 278/2023, de 8 de setembro); Guia Geral de Exames 2026, DGES / Instituto para o Ensino Superior, I.P.</p>
+
+      <p class="aviso-legal">⚠️ Fins informativos apenas. Os resultados são estimativas baseadas nos dados que introduzires. A classificação final pode variar consoante o curso, as disciplinas e a instituição. Verifica sempre com a tua escola e em <a href="https://www.dges.gov.pt/" target="_blank" rel="noopener">dges.gov.pt</a>. Esta ferramenta não substitui aconselhamento oficial. O NotaCerta não se responsabiliza por decisões tomadas com base nestes cálculos.</p>
+    </section>
+  </main>
+
+  <footer>
+    <p>NotaCerta — feito no verão de 2026. Os dados ficam guardados só no teu navegador.</p>
+    <button id="botaoDescarregarPDF" class="link-rodape" type="button">📄 Transferir em PDF</button>
+    <button id="botaoImprimir" class="link-rodape" type="button" onclick="window.print()">🖨️ Imprimir</button>
+    <button id="botaoComoCalculamos" class="link-rodape" type="button">📐 Como calculámos a tua média</button>
+  </footer>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <script>
+// ---- Transferir PDF diretamente ----
+// Em vez de "fotografar" a app viva (que tem tema escuro, inputs,
+// scroll horizontal e margens negativas — fonte de várias partidas),
+// construímos aqui um documento à parte, simples e com estilos fixos
+// em linha, só com os dados. Isto torna o resultado previsível.
+(function () {
+  const botao = document.getElementById('botaoDescarregarPDF');
+  if (!botao) return;
+
+  const ROTULOS_DURACAO = {
+    trienal: 'Trienal (×3)',
+    bienal: 'Bienal (×2)',
+    anual: 'Anual (×1)',
+  };
+
+  function escaparHTML(texto) {
+    const div = document.createElement('div');
+    div.textContent = String(texto ?? '');
+    return div.innerHTML;
+  }
+
+  function construirDocumentoExportacao() {
+    const cursoTexto = selectCurso.options[selectCurso.selectedIndex]
+      ? selectCurso.options[selectCurso.selectedIndex].text
+      : '—';
+
+    const linhas = disciplinas.map((d) => {
+      const cif = calcularCIF(d);
+      const final = calcularNotaFinal(d);
+      const temExame = d.exame !== '' && d.exame !== null && !isNaN(d.exame);
+      const exameCelula = temExame
+        ? `${escaparHTML(d.exame)}<br><span style="font-size:9.5px;color:#8a8f98;">${(parseFloat(d.exame) / 10).toFixed(1)} val.</span>`
+        : '<span style="color:#c7c5c2;">—</span>';
+      const contaMarca = d.contaExame
+        ? '<span style="color:#4f46e5;font-weight:700;">✓</span>'
+        : '<span style="color:#c7c5c2;">—</span>';
+
+      return `
+        <tr>
+          <td style="padding:9px 8px;border-bottom:1px solid #f1efec;font-weight:600;text-align:left;">${escaparHTML(d.nome || '(sem nome)')}</td>
+          <td style="padding:9px 8px;border-bottom:1px solid #f1efec;text-align:left;color:#4b5563;">${ROTULOS_DURACAO[d.duracao] || d.duracao}</td>
+          <td style="padding:9px 6px;border-bottom:1px solid #f1efec;text-align:center;">${d.n10 ?? '—'}</td>
+          <td style="padding:9px 6px;border-bottom:1px solid #f1efec;text-align:center;">${d.n11 ?? '—'}</td>
+          <td style="padding:9px 6px;border-bottom:1px solid #f1efec;text-align:center;">${d.n12 ?? '—'}</td>
+          <td style="padding:9px 6px;border-bottom:1px solid #f1efec;text-align:center;color:#4f46e5;font-weight:700;">${cif ?? '—'}</td>
+          <td style="padding:9px 6px;border-bottom:1px solid #f1efec;text-align:center;">${exameCelula}</td>
+          <td style="padding:9px 6px;border-bottom:1px solid #f1efec;text-align:center;">${contaMarca}</td>
+          <td style="padding:9px 6px;border-bottom:1px solid #f1efec;text-align:center;color:#4f46e5;font-weight:700;font-family:'Fraunces',Georgia,serif;font-size:14px;">${final !== null ? final.toFixed(2) : '—'}</td>
+        </tr>`;
+    }).join('');
+
+    const agora = new Date();
+    const dataFormatada = agora.toLocaleDateString('pt-PT', { day: 'numeric', month: 'long', year: 'numeric' });
+
+    const raiz = document.createElement('div');
+    raiz.id = 'exportPDFRaiz';
+    raiz.style.cssText = 'width:740px;margin:0;background:#f6f5f2;font-family:\'Inter\',\'Segoe UI\',Arial,sans-serif;color:#1e1b2e;-webkit-font-smoothing:antialiased;';
+
+    raiz.innerHTML = `
+      <div style="background:linear-gradient(135deg,#3730a3,#4f46e5);padding:34px 40px 28px;position:relative;">
+        <div style="position:absolute;top:16px;right:22px;font-size:10.5px;color:rgba(255,255,255,0.72);">Gerado a ${dataFormatada}</div>
+        <div style="display:flex;align-items:center;justify-content:center;gap:8px;">
+          <span style="font-size:24px;line-height:1;">🎓</span>
+          <span style="font-family:'Fraunces',Georgia,serif;font-size:25px;font-weight:700;color:#ffffff;">NotaCerta</span>
+        </div>
+        <div style="text-align:center;color:rgba(255,255,255,0.85);font-size:12.5px;margin-top:6px;">Escolhe o teu curso, mete as notas, e vê a tua média a atualizar em tempo real.</div>
+      </div>
+
+      <div style="padding:0 40px 36px;">
+        <div style="background:#ffffff;border:1px solid #e7e5e4;border-radius:16px;padding:24px 26px;margin:-20px 0 18px;box-shadow:0 10px 26px rgba(30,27,46,0.08);position:relative;">
+          <div style="font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:15px;color:#3730a3;border-bottom:1.5px solid #e7e5e4;padding-bottom:9px;margin-bottom:11px;">1. O teu curso</div>
+          <div style="font-weight:600;font-size:14.5px;">${escaparHTML(cursoTexto)}</div>
+        </div>
+
+        <div style="background:#ffffff;border:1px solid #e7e5e4;border-radius:16px;padding:24px 26px;margin-bottom:18px;box-shadow:0 10px 26px rgba(30,27,46,0.08);">
+          <div style="font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:15px;color:#3730a3;border-bottom:1.5px solid #e7e5e4;padding-bottom:9px;margin-bottom:14px;">2. As tuas notas</div>
+          <table style="width:100%;border-collapse:separate;border-spacing:0;table-layout:fixed;font-size:12.5px;">
+            <colgroup>
+              <col style="width:148px"><col style="width:92px"><col style="width:38px"><col style="width:38px">
+              <col style="width:38px"><col style="width:38px"><col style="width:66px"><col style="width:56px"><col style="width:64px">
+            </colgroup>
+            <thead>
+              <tr>
+                <th style="padding:9px 8px;text-align:left;background:linear-gradient(180deg,#eef0fe,#e5e8fb);color:#3730a3;font-size:9.5px;text-transform:uppercase;letter-spacing:.03em;border-radius:8px 0 0 0;">Disciplina</th>
+                <th style="padding:9px 8px;text-align:left;background:linear-gradient(180deg,#eef0fe,#e5e8fb);color:#3730a3;font-size:9.5px;text-transform:uppercase;letter-spacing:.03em;">Duração</th>
+                <th style="padding:9px 6px;text-align:center;background:linear-gradient(180deg,#eef0fe,#e5e8fb);color:#3730a3;font-size:9.5px;">10º</th>
+                <th style="padding:9px 6px;text-align:center;background:linear-gradient(180deg,#eef0fe,#e5e8fb);color:#3730a3;font-size:9.5px;">11º</th>
+                <th style="padding:9px 6px;text-align:center;background:linear-gradient(180deg,#eef0fe,#e5e8fb);color:#3730a3;font-size:9.5px;">12º</th>
+                <th style="padding:9px 6px;text-align:center;background:linear-gradient(180deg,#eef0fe,#e5e8fb);color:#3730a3;font-size:9.5px;">CIF</th>
+                <th style="padding:9px 6px;text-align:center;background:linear-gradient(180deg,#eef0fe,#e5e8fb);color:#3730a3;font-size:9.5px;">Exame</th>
+                <th style="padding:9px 6px;text-align:center;background:linear-gradient(180deg,#eef0fe,#e5e8fb);color:#3730a3;font-size:9.5px;">Conta?</th>
+                <th style="padding:9px 6px;text-align:center;background:linear-gradient(180deg,#eef0fe,#e5e8fb);color:#3730a3;font-size:9.5px;border-radius:0 8px 0 0;">Nota final</th>
+              </tr>
+            </thead>
+            <tbody>${linhas}</tbody>
+          </table>
+        </div>
+
+        <div style="background:#ffffff;border:1px solid #e7e5e4;border-radius:16px;padding:24px 26px;box-shadow:0 10px 26px rgba(30,27,46,0.08);">
+          <div style="font-family:'Fraunces',Georgia,serif;font-weight:600;font-size:15px;color:#3730a3;border-bottom:1.5px solid #e7e5e4;padding-bottom:9px;margin-bottom:14px;">3. Resumo</div>
+          <div style="display:flex;gap:10px;">
+            <div style="flex:1.7;background:linear-gradient(135deg,#3730a3,#4f46e5);color:#ffffff;border-radius:12px;padding:16px 18px;">
+              <div style="font-size:10px;text-transform:uppercase;letter-spacing:.05em;opacity:.85;font-weight:700;">📊 Média</div>
+              <div style="font-family:'Fraunces',Georgia,serif;font-size:32px;font-weight:600;line-height:1.2;">${escaparHTML(mediaGeralSpan.textContent)}</div>
+              <div style="font-size:10.5px;opacity:.8;">${escaparHTML(mediaPontosSpan.textContent)}</div>
+            </div>
+            <div style="flex:1;background:#f6f5f2;border-radius:12px;padding:14px 12px;text-align:center;">
+              <div style="font-size:9.5px;text-transform:uppercase;letter-spacing:.04em;color:#6b7280;font-weight:700;">🔵 Maior nota</div>
+              <div style="font-weight:600;font-size:12.5px;margin-top:6px;">${escaparHTML(maiorNotaSpan.textContent)}</div>
+            </div>
+            <div style="flex:1;background:#f6f5f2;border-radius:12px;padding:14px 12px;text-align:center;">
+              <div style="font-size:9.5px;text-transform:uppercase;letter-spacing:.04em;color:#6b7280;font-weight:700;">🔵 Menor nota</div>
+              <div style="font-weight:600;font-size:12.5px;margin-top:6px;">${escaparHTML(menorNotaSpan.textContent)}</div>
+            </div>
+            <div style="flex:1;background:#f6f5f2;border-radius:12px;padding:14px 12px;text-align:center;">
+              <div style="font-size:9.5px;text-transform:uppercase;letter-spacing:.04em;color:#6b7280;font-weight:700;">📚 Disciplinas</div>
+              <div style="font-weight:600;font-size:12.5px;margin-top:6px;">${escaparHTML(numDisciplinasSpan.textContent)}</div>
+            </div>
+          </div>
+        </div>
+
+        <div style="text-align:center;margin-top:22px;padding-top:13px;border-top:1px solid #e7e5e4;font-size:10.5px;color:#6b7280;">
+          NotaCerta — feito no verão de 2026. Os dados ficam guardados só no teu navegador.<br>
+          <span style="font-style:italic;font-size:10px;">Documento gerado a partir do NotaCerta — fins meramente informativos, não substitui a pauta oficial da escola.</span>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(raiz);
+    return raiz;
+  }
+
+  botao.addEventListener('click', async () => {
+    const textoOriginal = botao.textContent;
+    botao.disabled = true;
+    botao.textContent = '⏳ A gerar PDF…';
+
+    const raiz = construirDocumentoExportacao();
+
+    // Dar tempo ao browser para desenhar o elemento e carregar as fontes
+    // antes do html2canvas tirar a "fotografia" — evita capturas em branco.
+    if (document.fonts && document.fonts.ready) {
+      try { await document.fonts.ready; } catch (e) { /* ignora */ }
+    }
+    await new Promise((resolver) => requestAnimationFrame(() => requestAnimationFrame(resolver)));
+
+    const opcoes = {
+      margin: 10,
+      filename: 'notacerta-pauta.pdf',
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true, backgroundColor: '#f6f5f2' },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+      pagebreak: { mode: ['avoid-all'] }
+    };
+
+    try {
+      await window.html2pdf().set(opcoes).from(raiz).save();
+    } catch (erro) {
+      console.error('Erro ao gerar o PDF:', erro);
+      alert('Não foi possível gerar o PDF. Tenta novamente ou usa o botão "Imprimir".');
+    } finally {
+      raiz.remove();
+      botao.disabled = false;
+      botao.textContent = textoOriginal;
+    }
+  });
+})();
+
+// disciplinas.js
+// Fonte dos dados de cursos: DGE / Portaria n.º 226-A/2018 (alterada pela Portaria n.º 278/2023).
+// Cada disciplina tem uma "duracao" explícita (trienal/bienal/anual) — não é inferida
+// a partir de quantos anos o aluno preencheu, para evitar erros se faltar uma nota.
+
+const CURSOS = {
+  "Ciências e Tecnologias": [
+    { nome: "Português", duracao: "trienal", podeTerExame: true, exameFixo: true },
+    { nome: "Matemática A", duracao: "trienal", podeTerExame: true },
+    { nome: "Física e Química A", duracao: "bienal", podeTerExame: true },
+    { nome: "Biologia e Geologia", duracao: "bienal", podeTerExame: true },
+    { nome: "Filosofia", duracao: "bienal", podeTerExame: true },
+    { nome: "Inglês", duracao: "bienal", podeTerExame: false },
+    { nome: "Educação Física", duracao: "trienal", podeTerExame: false }
+  ],
+  "Ciências Socioeconómicas": [
+    { nome: "Português", duracao: "trienal", podeTerExame: true, exameFixo: true },
+    { nome: "Matemática A", duracao: "trienal", podeTerExame: true },
+    { nome: "Economia A", duracao: "bienal", podeTerExame: true },
+    { nome: "Geografia A", duracao: "bienal", podeTerExame: true },
+    { nome: "Filosofia", duracao: "bienal", podeTerExame: true },
+    { nome: "Inglês", duracao: "bienal", podeTerExame: false },
+    { nome: "Educação Física", duracao: "trienal", podeTerExame: false }
+  ],
+  "Línguas e Humanidades": [
+    { nome: "Português", duracao: "trienal", podeTerExame: true, exameFixo: true },
+    { nome: "História A", duracao: "trienal", podeTerExame: true },
+    { nome: "Matemática Aplicada às Ciências Sociais", duracao: "bienal", podeTerExame: true },
+    { nome: "Geografia A", duracao: "bienal", podeTerExame: true },
+    { nome: "Filosofia", duracao: "bienal", podeTerExame: true },
+    { nome: "Inglês", duracao: "bienal", podeTerExame: false },
+    { nome: "Educação Física", duracao: "trienal", podeTerExame: false }
+  ],
+  "Artes Visuais": [
+    { nome: "Português", duracao: "trienal", podeTerExame: true, exameFixo: true },
+    { nome: "Desenho A", duracao: "trienal", podeTerExame: true },
+    { nome: "Geometria Descritiva A", duracao: "bienal", podeTerExame: true },
+    { nome: "História da Cultura e das Artes", duracao: "bienal", podeTerExame: true },
+    { nome: "Filosofia", duracao: "bienal", podeTerExame: true },
+    { nome: "Inglês", duracao: "bienal", podeTerExame: false },
+    { nome: "Educação Física", duracao: "trienal", podeTerExame: false }
+  ]
+};
+
+// Peso de cada disciplina na média final, de acordo com a Portaria n.º 278/2023:
+// trienal pondera 3, bienal pondera 2, anual pondera 1.
+const PESOS_DURACAO = {
+  trienal: 3,
+  bienal: 2,
+  anual: 1
+};
+
+// Regra atual de cálculo da Classificação Final da Disciplina (CFD) quando há exame.
+const PESO_CIF = 0.75;
+const PESO_EXAME = 0.25;
+
+
+// calculos.js
+// Toda a lógica de cálculo isolada da interface. Usa os dados/regras de disciplinas.js.
+
+// A CIF é, por definição legal, a média aritmética simples das classificações
+// anuais JÁ ARREDONDADA ÀS UNIDADES (Portaria n.º 226-A/2018, artigo 32.º, n.º 1
+// alínea b) e n.º 2 — alterado pela Portaria n.º 278/2023). Não é a média "crua":
+// a lei manda arredondar aqui, antes de a CIF entrar na fórmula do CFD.
+function calcularCIF(d) {
+  const notas = [d.n10, d.n11, d.n12].filter(n => n !== null && n !== '' && !isNaN(n));
+  if (notas.length === 0) return null;
+  const soma = notas.reduce((acc, n) => acc + parseFloat(n), 0);
+  const media = soma / notas.length;
+  return Math.round(media);
+}
+
+function calcularNotaFinal(d) {
+  const cif = calcularCIF(d);
+  if (cif === null) return null;
+
+  // Se não vai a exame: CFD = CIF, com arredondamento às unidades (regra oficial).
+  if (!d.contaExame || d.exame === null || d.exame === '' || isNaN(d.exame)) {
+    return Math.round(cif);
+  }
+
+  // Se vai a exame: CFD = 75% CIF + 25% exame (em valores), também arredondada às unidades.
+  const exame20 = parseFloat(d.exame) / 10; // 0-200 -> 0-20
+  const cfd = (cif * PESO_CIF) + (exame20 * PESO_EXAME);
+  return Math.round(cfd);
+}
+
+// Peso oficial da disciplina na média final, baseado na sua duração (não nos anos preenchidos).
+function pesoDisciplina(d) {
+  return PESOS_DURACAO[d.duracao] || 1;
+}
+
+// CFC = (3×ΣCFD_trienais + 2×ΣCFD_bienais + 1×ΣCFD_anuais) / (3×nº_trienais + 2×nº_bienais + 1×nº_anuais)
+// Fonte: Portaria n.º 278/2023, de 8 de setembro (altera a Portaria n.º 226-A/2018).
+function calcularMediaGeral(lista) {
+  const itens = lista
+    .map(d => ({ final: calcularNotaFinal(d), peso: pesoDisciplina(d) }))
+    .filter(i => i.final !== null);
+
+  if (itens.length === 0) return null;
+
+  const somaPesos = itens.reduce((acc, i) => acc + i.peso, 0);
+  const somaPonderada = itens.reduce((acc, i) => acc + (i.final * i.peso), 0);
+  return somaPonderada / somaPesos;
+}
+
+
+// cursos-superiores.js
+// Base de dados de pares instituição/curso do ensino superior público, com a
+// fórmula oficial de cálculo da nota de candidatura e a nota do último colocado
+// no Concurso Nacional de Acesso 2025 (1ª fase).
+//
+// Fonte das notas de corte, vagas e nomes de curso/instituição: DGES —
+// "Classificações dos últimos colocados pelo contingente geral", 1ª fase do
+// Concurso Nacional de Acesso 2025.
+//
+// Os conjuntos de provas de ingresso de um grupo de cursos (assinalados com uma
+// nota) são o elenco TÍPICO para aquele tipo de curso a nível nacional, não uma
+// confirmação individual por instituição — os elencos podem variar ligeiramente.
+// Os restantes (Engenharia Informática da FEUP/IST, Medicina, Direito, ISEG,
+// Nova SBE, Psicologia de Lisboa, Arquitetura da FAUP/FAUL) foram confirmados
+// individualmente junto do Guia da Candidatura da DGES.
+//
+// AVISO: notas de corte variam todos os anos consoante a procura e o nº de
+// vagas. Isto é uma ESTIMATIVA baseada no ano anterior, não garantia de entrada.
+
+const CURSOS_SUPERIORES = [
+  {
+    "id": "feup-eic",
+    "instituicao": "Universidade do Porto — Faculdade de Engenharia (FEUP)",
+    "curso": "Engenharia Informática e Computação",
+    "area": "Ciências e Tecnologias",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Física e Química A",
+        "Matemática A"
+      ],
+      [
+        "Matemática A",
+        "Português"
+      ]
+    ],
+    "notaCandidaturaMinima": 140,
+    "ultimoColocado2025": 167.3,
+    "vagas": 284
+  },
+  {
+    "id": "ist-eic",
+    "instituicao": "Universidade de Lisboa — Instituto Superior Técnico (IST)",
+    "curso": "Engenharia Informática e de Computadores",
+    "area": "Ciências e Tecnologias",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Biologia e Geologia",
+        "Matemática A"
+      ],
+      [
+        "Física e Química A",
+        "Matemática A"
+      ],
+      [
+        "Geometria Descritiva A",
+        "Matemática A"
+      ]
+    ],
+    "notaCandidaturaMinima": 120,
+    "notaMinimaProvas": 100,
+    "ultimoColocado2025": 166.3,
+    "vagas": 183,
+    "nota": "Confirmado no Guia da Candidatura da DGES (2026)."
+  },
+  {
+    "id": "fmul-medicina",
+    "instituicao": "Universidade de Lisboa — Faculdade de Medicina (FMUL)",
+    "curso": "Medicina",
+    "area": "Ciências e Tecnologias",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Biologia e Geologia",
+        "Física e Química A",
+        "Matemática A"
+      ]
+    ],
+    "notaCandidaturaMinima": 160,
+    "notaMinimaProvas": 140,
+    "ultimoColocado2025": 178.7,
+    "vagas": 299,
+    "nota": "Confirmado no Guia da Candidatura da DGES (2026): as três provas são obrigatórias em conjunto, não é escolha de 2 de 3. Exige também uma prova de avaliação de aptidões/entrevista (Grupo A), não incluída neste simulador."
+  },
+  {
+    "id": "fmuc-medicina",
+    "instituicao": "Universidade de Coimbra — Faculdade de Medicina",
+    "curso": "Medicina",
+    "area": "Ciências e Tecnologias",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Biologia e Geologia",
+        "Física e Química A",
+        "Matemática A"
+      ]
+    ],
+    "notaCandidaturaMinima": 140,
+    "notaMinimaProvas": 140,
+    "ultimoColocado2025": 179.0,
+    "vagas": 287,
+    "nota": "Confirmado no Guia da Candidatura da DGES (2026): as três provas são obrigatórias em conjunto, não é escolha de 2 de 3. Exige também uma prova de avaliação de aptidões/entrevista (Grupo A), não incluída neste simulador."
+  },
+  {
+    "id": "uminho-medicina",
+    "instituicao": "Universidade do Minho — Escola de Medicina",
+    "curso": "Medicina",
+    "area": "Ciências e Tecnologias",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Biologia e Geologia",
+        "Física e Química A",
+        "Matemática A"
+      ]
+    ],
+    "notaCandidaturaMinima": 140,
+    "notaMinimaProvas": 140,
+    "ultimoColocado2025": 183.5,
+    "vagas": 122,
+    "nota": "Confirmado no Guia da Candidatura da DGES (2026): as três provas são obrigatórias em conjunto, não é escolha de 2 de 3. Exige também uma prova de avaliação de aptidões/entrevista, não incluída neste simulador."
+  },
+  {
+    "id": "fdul-direito",
+    "instituicao": "Universidade de Lisboa — Faculdade de Direito",
+    "curso": "Direito",
+    "area": "Línguas e Humanidades",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Filosofia",
+        "Português"
+      ],
+      [
+        "História A",
+        "Português"
+      ]
+    ],
+    "notaCandidaturaMinima": 120,
+    "ultimoColocado2025": 163.3,
+    "vagas": 445
+  },
+  {
+    "id": "fdunl-direito",
+    "instituicao": "Universidade Nova de Lisboa — Faculdade de Direito",
+    "curso": "Direito",
+    "area": "Línguas e Humanidades",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Filosofia",
+        "Português"
+      ],
+      [
+        "História A",
+        "Português"
+      ],
+      [
+        "Matemática A",
+        "Português"
+      ]
+    ],
+    "notaCandidaturaMinima": 120,
+    "ultimoColocado2025": 178.0,
+    "vagas": 100
+  },
+  {
+    "id": "fdup-direito",
+    "instituicao": "Universidade do Porto — Faculdade de Direito",
+    "curso": "Direito",
+    "area": "Línguas e Humanidades",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Filosofia",
+        "Português"
+      ],
+      [
+        "História A",
+        "Português"
+      ]
+    ],
+    "notaCandidaturaMinima": 120,
+    "ultimoColocado2025": 177.8,
+    "vagas": 155
+  },
+  {
+    "id": "iseg-economia",
+    "instituicao": "Universidade de Lisboa — ISEG",
+    "curso": "Economia",
+    "area": "Ciências Socioeconómicas",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Matemática A"
+      ],
+      [
+        "Economia",
+        "Matemática A"
+      ],
+      [
+        "Física e Química A",
+        "Matemática A"
+      ],
+      [
+        "Geografia A",
+        "Matemática A"
+      ],
+      [
+        "Inglês",
+        "Matemática A"
+      ],
+      [
+        "Matemática A",
+        "Português"
+      ],
+      [
+        "Biologia e Geologia",
+        "Matemática A"
+      ]
+    ],
+    "notaCandidaturaMinima": 100,
+    "notaMinimaProvas": 95,
+    "ultimoColocado2025": 161.9,
+    "vagas": 132,
+    "nota": "Confirmado no Guia da Candidatura da DGES (2026). Nota: quando há 2 provas, a DGES pondera-as com pesos próprios (ex: 20%/30%) em vez de média simples; este simulador usa média simples como aproximação."
+  },
+  {
+    "id": "iseg-gestao",
+    "instituicao": "Universidade de Lisboa — ISEG",
+    "curso": "Gestão",
+    "area": "Ciências Socioeconómicas",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Matemática A"
+      ],
+      [
+        "Economia",
+        "Matemática A"
+      ],
+      [
+        "Física e Química A",
+        "Matemática A"
+      ],
+      [
+        "Geografia A",
+        "Matemática A"
+      ],
+      [
+        "Inglês",
+        "Matemática A"
+      ],
+      [
+        "Matemática A",
+        "Português"
+      ],
+      [
+        "Biologia e Geologia",
+        "Matemática A"
+      ]
+    ],
+    "notaCandidaturaMinima": 100,
+    "notaMinimaProvas": 95,
+    "ultimoColocado2025": 167.1,
+    "vagas": 137,
+    "nota": "Confirmado no Guia da Candidatura da DGES (2026). Nota: quando há 2 provas, a DGES pondera-as com pesos próprios (ex: 20%/30%) em vez de média simples; este simulador usa média simples como aproximação."
+  },
+  {
+    "id": "novasbe-economia",
+    "instituicao": "Universidade Nova de Lisboa — Nova SBE",
+    "curso": "Economia",
+    "area": "Ciências Socioeconómicas",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Matemática A"
+      ],
+      [
+        "Filosofia",
+        "Matemática A"
+      ],
+      [
+        "Física e Química A",
+        "Matemática A"
+      ],
+      [
+        "Geografia A",
+        "Matemática A"
+      ],
+      [
+        "Matemática A",
+        "Português"
+      ],
+      [
+        "Economia",
+        "Matemática A"
+      ]
+    ],
+    "notaCandidaturaMinima": 135,
+    "notaMinimaProvas": 95,
+    "ultimoColocado2025": 174.6,
+    "vagas": 195,
+    "nota": "CORRIGIDO: o valor anterior (nota mínima 95, só Matemática A) estava errado. Confirmado no Guia da Candidatura da DGES (2026): nota mínima de candidatura real é 135 pontos (não 95), e existem 6 conjuntos alternativos. Atenção: a Nova SBE pondera cada prova com percentagens próprias (ex: Matemática A sozinha vale 50%, mas em combinação com outra prova passa a 30%/20%) — este simulador usa sempre média simples 50/50, pelo que o valor calculado é uma aproximação. Confirma sempre no Guia da Candidatura da DGES antes de decidir. A DGES também aceita Inglês+Matemática A, não suportado por este simulador."
+  },
+  {
+    "id": "novasbe-gestao",
+    "instituicao": "Universidade Nova de Lisboa — Nova SBE",
+    "curso": "Gestão",
+    "area": "Ciências Socioeconómicas",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Matemática A"
+      ],
+      [
+        "Filosofia",
+        "Matemática A"
+      ],
+      [
+        "Física e Química A",
+        "Matemática A"
+      ],
+      [
+        "Geografia A",
+        "Matemática A"
+      ],
+      [
+        "Matemática A",
+        "Português"
+      ],
+      [
+        "Economia",
+        "Matemática A"
+      ]
+    ],
+    "notaCandidaturaMinima": 135,
+    "notaMinimaProvas": 95,
+    "ultimoColocado2025": 177.6,
+    "vagas": 295,
+    "nota": "CORRIGIDO: o valor anterior (nota mínima 95, só Matemática A) estava errado. Confirmado no Guia da Candidatura da DGES (2026): nota mínima de candidatura real é 135 pontos (não 95), e existem 6 conjuntos alternativos. Atenção: a Nova SBE pondera cada prova com percentagens próprias (ex: Matemática A sozinha vale 50%, mas em combinação com outra prova passa a 30%/20%) — este simulador usa sempre média simples 50/50, pelo que o valor calculado é uma aproximação. Confirma sempre no Guia da Candidatura da DGES antes de decidir. A DGES também aceita Inglês+Matemática A, não suportado por este simulador."
+  },
+  {
+    "id": "fpul-psicologia",
+    "instituicao": "Universidade de Lisboa — Faculdade de Psicologia",
+    "curso": "Psicologia",
+    "area": "Línguas e Humanidades",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Biologia e Geologia",
+        "Português"
+      ],
+      [
+        "Filosofia",
+        "Português"
+      ],
+      [
+        "Matemática A",
+        "Português"
+      ]
+    ],
+    "notaCandidaturaMinima": 95,
+    "ultimoColocado2025": 168.0,
+    "vagas": 137,
+    "nota": "Conjuntos de provas e peso média/provas aproximados (padrão 50%/50%) — confirma sempre os valores exatos no Guia da Candidatura da DGES antes de decidir."
+  },
+  {
+    "id": "faup-arquitetura",
+    "instituicao": "Universidade do Porto — Faculdade de Arquitetura (FAUP)",
+    "curso": "Arquitetura",
+    "area": "Artes Visuais",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Desenho A",
+        "Geometria Descritiva A"
+      ],
+      [
+        "Geometria Descritiva A",
+        "Matemática A"
+      ],
+      [
+        "Geometria Descritiva A",
+        "Português"
+      ],
+      [
+        "Desenho A",
+        "Matemática A"
+      ],
+      [
+        "Desenho A",
+        "Português"
+      ]
+    ],
+    "notaCandidaturaMinima": 100,
+    "ultimoColocado2025": 178.8,
+    "vagas": 124
+  },
+  {
+    "id": "faul-arquitetura",
+    "instituicao": "Universidade de Lisboa — Faculdade de Arquitetura",
+    "curso": "Arquitetura",
+    "area": "Artes Visuais",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Desenho A",
+        "Geometria Descritiva A"
+      ],
+      [
+        "Geometria Descritiva A",
+        "Matemática A"
+      ]
+    ],
+    "notaCandidaturaMinima": 95,
+    "ultimoColocado2025": 161.3,
+    "vagas": 209,
+    "nota": "Conjunto de provas e peso média/provas aproximados (padrão 50%/50%) — confirma sempre os valores exatos no Guia da Candidatura da DGES antes de decidir."
+  },
+  {
+    "id": "porto-fep-economia",
+    "instituicao": "Universidade do Porto — Faculdade de Economia (FEP)",
+    "curso": "Economia",
+    "area": "Ciências Socioeconómicas",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Economia",
+        "Matemática A"
+      ],
+      [
+        "Física e Química A",
+        "Matemática A"
+      ],
+      [
+        "História A",
+        "Matemática A"
+      ],
+      [
+        "Inglês",
+        "Matemática A"
+      ],
+      [
+        "Matemática A",
+        "Português"
+      ],
+      [
+        "Economia",
+        "Matemática A",
+        "Português"
+      ]
+    ],
+    "notaCandidaturaMinima": 110,
+    "notaMinimaProvas": 120,
+    "ultimoColocado2025": 172.3,
+    "vagas": 178,
+    "nota": "Confirmado no Guia da Candidatura da DGES (2026)."
+  },
+  {
+    "id": "porto-fep-gestao",
+    "instituicao": "Universidade do Porto — Faculdade de Economia (FEP)",
+    "curso": "Gestão",
+    "area": "Ciências Socioeconómicas",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Economia",
+        "Matemática A"
+      ],
+      [
+        "Física e Química A",
+        "Matemática A"
+      ],
+      [
+        "História A",
+        "Matemática A"
+      ],
+      [
+        "Inglês",
+        "Matemática A"
+      ],
+      [
+        "Matemática A",
+        "Português"
+      ],
+      [
+        "Economia",
+        "Matemática A",
+        "Português"
+      ]
+    ],
+    "notaCandidaturaMinima": 110,
+    "notaMinimaProvas": 120,
+    "ultimoColocado2025": 178.0,
+    "vagas": 178,
+    "nota": "Confirmado no Guia da Candidatura da DGES (2026)."
+  },
+  {
+    "id": "aveiro-economia",
+    "instituicao": "Universidade de Aveiro",
+    "curso": "Economia",
+    "area": "Ciências Socioeconómicas",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Economia",
+        "Matemática A"
+      ],
+      [
+        "Geografia A",
+        "Matemática A"
+      ],
+      [
+        "Matemática A",
+        "Português"
+      ]
+    ],
+    "notaCandidaturaMinima": 95,
+    "ultimoColocado2025": 158.5,
+    "vagas": 47,
+    "nota": "Confirmado no Guia da Candidatura da DGES (2026): a Universidade de Aveiro exige sempre um PAR de provas (não Matemática A sozinha) — Economia+MatA, Geografia A+MatA, ou MatA+Português. Verifica sempre a versão mais recente no Guia da Candidatura da DGES antes de decidir."
+  },
+  {
+    "id": "aveiro-gestao",
+    "instituicao": "Universidade de Aveiro",
+    "curso": "Gestão",
+    "area": "Ciências Socioeconómicas",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Matemática A"
+      ]
+    ],
+    "notaCandidaturaMinima": 95,
+    "ultimoColocado2025": 165.3,
+    "vagas": 39,
+    "nota": "Conjunto de provas de ingresso e peso média/provas aproximados (o típico para este tipo de curso, com o padrão legal de 50%/50%) — desde 2025 a lei permite entre 40-50% para a média e 45-60% para as provas (a média nunca pode pesar mais que as provas), e cada instituição define o valor exato. Confirma sempre no Guia da Candidatura da DGES antes de decidir."
+  },
+  {
+    "id": "aveiro-eng-informatica",
+    "instituicao": "Universidade de Aveiro",
+    "curso": "Engenharia Informática",
+    "area": "Ciências e Tecnologias",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Biologia e Geologia",
+        "Matemática A"
+      ],
+      [
+        "Física e Química A",
+        "Matemática A"
+      ]
+    ],
+    "notaCandidaturaMinima": 95,
+    "ultimoColocado2025": 158.5,
+    "vagas": 78,
+    "nota": "Confirmado no Guia da Candidatura da DGES (2026): a Universidade de Aveiro aceita Biologia e Geologia + Matemática A OU Física e Química A + Matemática A. Verifica sempre a versão mais recente no Guia da Candidatura da DGES antes de decempre no Guia da Candidatura da DGES antes de decidir."
+  },
+  {
+    "id": "aveiro-eng-civil",
+    "instituicao": "Universidade de Aveiro",
+    "curso": "Engenharia Civil",
+    "area": "Ciências e Tecnologias",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Física e Química A",
+        "Matemática A"
+      ]
+    ],
+    "notaCandidaturaMinima": 95,
+    "ultimoColocado2025": 144.0,
+    "vagas": 25,
+    "nota": "Conjunto de provas de ingresso e peso média/provas aproximados (o típico para este tipo de curso, com o padrão legal de 50%/50%) — desde 2025 a lei permite entre 40-50% para a média e 45-60% para as provas (a média nunca pode pesar mais que as provas), e cada instituição define o valor exato. Confirma sempre no Guia da Candidatura da DGES antes de decidir."
+  },
+  {
+    "id": "aveiro-eng-mecanica",
+    "instituicao": "Universidade de Aveiro",
+    "curso": "Engenharia Mecânica",
+    "area": "Ciências e Tecnologias",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Física e Química A",
+        "Matemática A"
+      ]
+    ],
+    "notaCandidaturaMinima": 95,
+    "ultimoColocado2025": 155.5,
+    "vagas": 101,
+    "nota": "Conjunto de provas de ingresso e peso média/provas aproximados (o típico para este tipo de curso, com o padrão legal de 50%/50%) — desde 2025 a lei permite entre 40-50% para a média e 45-60% para as provas (a média nunca pode pesar mais que as provas), e cada instituição define o valor exato. Confirma sempre no Guia da Candidatura da DGES antes de decidir."
+  },
+  {
+    "id": "aveiro-eng-aeroespacial",
+    "instituicao": "Universidade de Aveiro",
+    "curso": "Engenharia Aeroespacial",
+    "area": "Ciências e Tecnologias",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Física e Química A",
+        "Matemática A"
+      ]
+    ],
+    "notaCandidaturaMinima": 95,
+    "ultimoColocado2025": 183.8,
+    "vagas": 50,
+    "nota": "Conjunto de provas de ingresso e peso média/provas aproximados (o típico para este tipo de curso, com o padrão legal de 50%/50%) — desde 2025 a lei permite entre 40-50% para a média e 45-60% para as provas (a média nunca pode pesar mais que as provas), e cada instituição define o valor exato. Confirma sempre no Guia da Candidatura da DGES antes de decidir."
+  },
+  {
+    "id": "aveiro-design",
+    "instituicao": "Universidade de Aveiro",
+    "curso": "Design",
+    "area": "Artes Visuais",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Desenho A",
+        "Geometria Descritiva A"
+      ],
+      [
+        "Geometria Descritiva A",
+        "Matemática A"
+      ],
+      [
+        "Desenho A",
+        "Matemática A"
+      ],
+      [
+        "Desenho A",
+        "Português"
+      ]
+    ],
+    "notaCandidaturaMinima": 95,
+    "ultimoColocado2025": 153.5,
+    "vagas": 52,
+    "nota": "Conjunto de provas de ingresso e peso média/provas aproximados (o típico para este tipo de curso, com o padrão legal de 50%/50%) — desde 2025 a lei permite entre 40-50% para a média e 45-60% para as provas (a média nunca pode pesar mais que as provas), e cada instituição define o valor exato. Confirma sempre no Guia da Candidatura da DGES antes de decidir."
+  },
+  {
+    "id": "aveiro-psicologia",
+    "instituicao": "Universidade de Aveiro",
+    "curso": "Psicologia",
+    "area": "Línguas e Humanidades",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Biologia e Geologia",
+        "Português"
+      ],
+      [
+        "Filosofia",
+        "Português"
+      ],
+      [
+        "Matemática A",
+        "Português"
+      ]
+    ],
+    "notaCandidaturaMinima": 95,
+    "ultimoColocado2025": 167.0,
+    "vagas": 33,
+    "nota": "Conjunto de provas de ingresso e peso média/provas aproximados (o típico para este tipo de curso, com o padrão legal de 50%/50%) — desde 2025 a lei permite entre 40-50% para a média e 45-60% para as provas (a média nunca pode pesar mais que as provas), e cada instituição define o valor exato. Confirma sempre no Guia da Candidatura da DGES antes de decidir."
+  },
+  {
+    "id": "aveiro-medicina",
+    "instituicao": "Universidade de Aveiro",
+    "curso": "Medicina",
+    "area": "Ciências e Tecnologias",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Biologia e Geologia",
+        "Física e Química A"
+      ],
+      [
+        "Biologia e Geologia",
+        "Matemática A"
+      ],
+      [
+        "Física e Química A",
+        "Matemática A"
+      ]
+    ],
+    "notaCandidaturaMinima": 140,
+    "ultimoColocado2025": 182.8,
+    "vagas": 40,
+    "nota": "Exige também prova de avaliação de aptidões/entrevista, não incluída neste simulador. Conjunto de provas de ingresso e peso média/provas aproximados (o típico para este tipo de curso, com o padrão legal de 50%/50%) — desde 2025 a lei permite entre 40-50% para a média e 45-60% para as provas (a média nunca pode pesar mais que as provas), e cada instituição define o valor exato. Confirma sempre no Guia da Candidatura da DGES antes de decidir."
+  },
+  {
+    "id": "aveiro-ciencias-biomedicas",
+    "instituicao": "Universidade de Aveiro",
+    "curso": "Ciências Biomédicas",
+    "area": "Ciências e Tecnologias",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Biologia e Geologia",
+        "Física e Química A"
+      ],
+      [
+        "Biologia e Geologia",
+        "Matemática A"
+      ],
+      [
+        "Física e Química A",
+        "Matemática A"
+      ]
+    ],
+    "notaCandidaturaMinima": 140,
+    "ultimoColocado2025": 166.3,
+    "vagas": 77,
+    "nota": "Conjunto de provas de ingresso e peso média/provas aproximados (o típico para este tipo de curso, com o padrão legal de 50%/50%) — desde 2025 a lei permite entre 40-50% para a média e 45-60% para as provas (a média nunca pode pesar mais que as provas), e cada instituição define o valor exato. Confirma sempre no Guia da Candidatura da DGES antes de decidir."
+  },
+  {
+    "id": "aveiro-eng-biomedica",
+    "instituicao": "Universidade de Aveiro",
+    "curso": "Engenharia Biomédica",
+    "area": "Ciências e Tecnologias",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Física e Química A",
+        "Matemática A"
+      ]
+    ],
+    "notaCandidaturaMinima": 95,
+    "ultimoColocado2025": 160.3,
+    "vagas": 37,
+    "nota": "Conjunto de provas de ingresso e peso média/provas aproximados (o típico para este tipo de curso, com o padrão legal de 50%/50%) — desde 2025 a lei permite entre 40-50% para a média e 45-60% para as provas (a média nunca pode pesar mais que as provas), e cada instituição define o valor exato. Confirma sempre no Guia da Candidatura da DGES antes de decidir."
+  },
+  {
+    "id": "aveiro-enfermagem",
+    "instituicao": "Universidade de Aveiro — Escola Superior de Saúde",
+    "curso": "Enfermagem",
+    "area": "Ciências e Tecnologias",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Biologia e Geologia",
+        "Física e Química A"
+      ],
+      [
+        "Biologia e Geologia",
+        "Matemática A"
+      ],
+      [
+        "Física e Química A",
+        "Matemática A"
+      ]
+    ],
+    "notaCandidaturaMinima": 140,
+    "ultimoColocado2025": 141.0,
+    "vagas": 82,
+    "nota": "Conjunto de provas de ingresso e peso média/provas aproximados (o típico para este tipo de curso, com o padrão legal de 50%/50%) — desde 2025 a lei permite entre 40-50% para a média e 45-60% para as provas (a média nunca pode pesar mais que as provas), e cada instituição define o valor exato. Confirma sempre no Guia da Candidatura da DGES antes de decidir."
+  },
+  {
+    "id": "aveiro-fisioterapia",
+    "instituicao": "Universidade de Aveiro — Escola Superior de Saúde",
+    "curso": "Fisioterapia",
+    "area": "Ciências e Tecnologias",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Biologia e Geologia",
+        "Física e Química A"
+      ],
+      [
+        "Biologia e Geologia",
+        "Matemática A"
+      ],
+      [
+        "Física e Química A",
+        "Matemática A"
+      ]
+    ],
+    "notaCandidaturaMinima": 140,
+    "ultimoColocado2025": 154.3,
+    "vagas": 40,
+    "nota": "Conjunto de provas de ingresso e peso média/provas aproximados (o típico para este tipo de curso, com o padrão legal de 50%/50%) — desde 2025 a lei permite entre 40-50% para a média e 45-60% para as provas (a média nunca pode pesar mais que as provas), e cada instituição define o valor exato. Confirma sempre no Guia da Candidatura da DGES antes de decidir."
+  },
+  {
+    "id": "ubi-medicina",
+    "instituicao": "Universidade da Beira Interior",
+    "curso": "Medicina",
+    "area": "Ciências e Tecnologias",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Biologia e Geologia",
+        "Física e Química A"
+      ],
+      [
+        "Biologia e Geologia",
+        "Matemática A"
+      ],
+      [
+        "Física e Química A",
+        "Matemática A"
+      ]
+    ],
+    "notaCandidaturaMinima": 140,
+    "ultimoColocado2025": 177.2,
+    "vagas": 150,
+    "nota": "Exige também prova de avaliação de aptidões/entrevista, não incluída neste simulador. Conjunto de provas de ingresso e peso média/provas aproximados (o típico para este tipo de curso, com o padrão legal de 50%/50%) — desde 2025 a lei permite entre 40-50% para a média e 45-60% para as provas (a média nunca pode pesar mais que as provas), e cada instituição define o valor exato. Confirma sempre no Guia da Candidatura da DGES antes de decidir."
+  },
+  {
+    "id": "ubi-arquitetura",
+    "instituicao": "Universidade da Beira Interior",
+    "curso": "Arquitetura",
+    "area": "Artes Visuais",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Desenho A",
+        "Geometria Descritiva A"
+      ],
+      [
+        "Geometria Descritiva A",
+        "Matemática A"
+      ],
+      [
+        "Geometria Descritiva A",
+        "Português"
+      ],
+      [
+        "Desenho A",
+        "Matemática A"
+      ],
+      [
+        "Desenho A",
+        "Português"
+      ]
+    ],
+    "notaCandidaturaMinima": 95,
+    "ultimoColocado2025": 149.8,
+    "vagas": 64,
+    "nota": "Conjunto de provas de ingresso e peso média/provas aproximados (o típico para este tipo de curso, com o padrão legal de 50%/50%) — desde 2025 a lei permite entre 40-50% para a média e 45-60% para as provas (a média nunca pode pesar mais que as provas), e cada instituição define o valor exato. Confirma sempre no Guia da Candidatura da DGES antes de decidir."
+  },
+  {
+    "id": "ubi-psicologia",
+    "instituicao": "Universidade da Beira Interior",
+    "curso": "Psicologia",
+    "area": "Línguas e Humanidades",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Biologia e Geologia",
+        "Português"
+      ],
+      [
+        "Filosofia",
+        "Português"
+      ],
+      [
+        "Matemática A",
+        "Português"
+      ]
+    ],
+    "notaCandidaturaMinima": 95,
+    "ultimoColocado2025": 158.8,
+    "vagas": 55,
+    "nota": "Conjunto de provas de ingresso e peso média/provas aproximados (o típico para este tipo de curso, com o padrão legal de 50%/50%) — desde 2025 a lei permite entre 40-50% para a média e 45-60% para as provas (a média nunca pode pesar mais que as provas), e cada instituição define o valor exato. Confirma sempre no Guia da Candidatura da DGES antes de decidir."
+  },
+  {
+    "id": "ubi-ciencias-comunicacao",
+    "instituicao": "Universidade da Beira Interior",
+    "curso": "Ciências da Comunicação",
+    "area": "Línguas e Humanidades",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Filosofia",
+        "Português"
+      ],
+      [
+        "História A",
+        "Português"
+      ],
+      [
+        "Matemática A",
+        "Português"
+      ]
+    ],
+    "notaCandidaturaMinima": 95,
+    "ultimoColocado2025": 129.9,
+    "vagas": 68,
+    "nota": "Conjunto de provas de ingresso e peso média/provas aproximados (o típico para este tipo de curso, com o padrão legal de 50%/50%) — desde 2025 a lei permite entre 40-50% para a média e 45-60% para as provas (a média nunca pode pesar mais que as provas), e cada instituição define o valor exato. Confirma sempre no Guia da Candidatura da DGES antes de decidir."
+  },
+  {
+    "id": "ubi-gestao",
+    "instituicao": "Universidade da Beira Interior",
+    "curso": "Gestão",
+    "area": "Ciências Socioeconómicas",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Matemática A"
+      ]
+    ],
+    "notaCandidaturaMinima": 95,
+    "ultimoColocado2025": 145.1,
+    "vagas": 81,
+    "nota": "Conjunto de provas de ingresso e peso média/provas aproximados (o típico para este tipo de curso, com o padrão legal de 50%/50%) — desde 2025 a lei permite entre 40-50% para a média e 45-60% para as provas (a média nunca pode pesar mais que as provas), e cada instituição define o valor exato. Confirma sempre no Guia da Candidatura da DGES antes de decidir."
+  },
+  {
+    "id": "ubi-farmaceuticas",
+    "instituicao": "Universidade da Beira Interior",
+    "curso": "Ciências Farmacêuticas",
+    "area": "Ciências e Tecnologias",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Biologia e Geologia",
+        "Física e Química A"
+      ],
+      [
+        "Biologia e Geologia",
+        "Matemática A"
+      ],
+      [
+        "Física e Química A",
+        "Matemática A"
+      ]
+    ],
+    "notaCandidaturaMinima": 140,
+    "ultimoColocado2025": 121.5,
+    "vagas": 62,
+    "nota": "Conjunto de provas de ingresso e peso média/provas aproximados (o típico para este tipo de curso, com o padrão legal de 50%/50%) — desde 2025 a lei permite entre 40-50% para a média e 45-60% para as provas (a média nunca pode pesar mais que as provas), e cada instituição define o valor exato. Confirma sempre no Guia da Candidatura da DGES antes de decidir."
+  },
+  {
+    "id": "uc-eng-informatica",
+    "instituicao": "Universidade de Coimbra — Faculdade de Ciências e Tecnologia",
+    "curso": "Engenharia Informática",
+    "area": "Ciências e Tecnologias",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Matemática A"
+      ],
+      [
+        "Física e Química A",
+        "Matemática A"
+      ],
+      [
+        "Matemática A",
+        "Português"
+      ],
+      [
+        "Biologia e Geologia",
+        "Matemática A"
+      ]
+    ],
+    "notaCandidaturaMinima": 100,
+    "notaMinimaProvas": 95,
+    "ultimoColocado2025": 145.3,
+    "vagas": 156,
+    "nota": "Confirmado no Guia da Candidatura da DGES (2026): a Universidade de Coimbra aceita 4 conjuntos alternativos, incluindo Matemática A sozinha. Nota mínima de candidatura 100 pontos, nota mínima nas provas 95 pontos. Verifica sempre a versão mais recente no Guia da Candidatura da DGES antes de decidirão define o valor exato. Confirma sempre no Guia da Candidatura da DGES antes de decidir."
+  },
+  {
+    "id": "uc-eng-civil",
+    "instituicao": "Universidade de Coimbra — Faculdade de Ciências e Tecnologia",
+    "curso": "Engenharia Civil",
+    "area": "Ciências e Tecnologias",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Física e Química A",
+        "Matemática A"
+      ]
+    ],
+    "notaCandidaturaMinima": 100,
+    "notaMinimaProvas": 95,
+    "ultimoColocado2025": 132.0,
+    "vagas": 39,
+    "nota": "Conjunto de provas de ingresso CONFIRMADO no Guia da Candidatura da DGES (2026): apenas Física e Química A + Matemática A, correto. Nota mínima de candidatura corrigida para 100 pontos, nota mínima nas provas 95 pontos. desde 2025 a lei permite entre 40-50% para a média e 45-60% para as provas (a média nunca pode pesar mais que as provas), e cada instituição define o valor exato. Confirma sempre no Guia da Candidatura da DGES antes de decidir."
+  },
+  {
+    "id": "uc-eng-mecanica",
+    "instituicao": "Universidade de Coimbra — Faculdade de Ciências e Tecnologia",
+    "curso": "Engenharia Mecânica",
+    "area": "Ciências e Tecnologias",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Física e Química A",
+        "Matemática A"
+      ]
+    ],
+    "notaCandidaturaMinima": 100,
+    "notaMinimaProvas": 95,
+    "ultimoColocado2025": 135.0,
+    "vagas": 109,
+    "nota": "Conjunto de provas de ingresso CONFIRMADO no Guia da Candidatura da DGES (2026): apenas Física e Química A + Matemática A, correto. Nota mínima de candidatura corrigida para 100 pontos, nota mínima nas provas 95 pontos. 5%/50%) — desde 2025 a lei permite entre 40-50% para a média e 45-60% para as provas (a média nunca pode pesar mais que as provas), e cada instituição define o valor exato. Confirma sempre no Guia da Candidatura da DGES antes de decidir."
+  },
+  {
+    "id": "uc-arquitetura",
+    "instituicao": "Universidade de Coimbra — Faculdade de Ciências e Tecnologia",
+    "curso": "Arquitetura",
+    "area": "Artes Visuais",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Desenho A",
+        "Geometria Descritiva A"
+      ],
+      [
+        "Geometria Descritiva A",
+        "Matemática A"
+      ],
+      [
+        "Geometria Descritiva A",
+        "Português"
+      ],
+      [
+        "Desenho A",
+        "Matemática A"
+      ],
+      [
+        "Desenho A",
+        "Português"
+      ]
+    ],
+    "notaCandidaturaMinima": 95,
+    "ultimoColocado2025": 165.8,
+    "vagas": 61,
+    "nota": "Conjunto de provas de ingresso e peso média/provas aproximados (o típico para este tipo de curso, com o padrão legal de 50%/50%) — desde 2025 a lei permite entre 40-50% para a média e 45-60% para as provas (a média nunca pode pesar mais que as provas), e cada instituição define o valor exato. Confirma sempre no Guia da Candidatura da DGES antes de decidir."
+  },
+  {
+    "id": "uc-direito",
+    "instituicao": "Universidade de Coimbra — Faculdade de Direito",
+    "curso": "Direito",
+    "area": "Línguas e Humanidades",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Filosofia",
+        "Português"
+      ],
+      [
+        "História A",
+        "Português"
+      ]
+    ],
+    "notaCandidaturaMinima": 120,
+    "ultimoColocado2025": 165.0,
+    "vagas": 340,
+    "nota": "Conjunto de provas de ingresso e peso média/provas aproximados (o típico para este tipo de curso, com o padrão legal de 50%/50%) — desde 2025 a lei permite entre 40-50% para a média e 45-60% para as provas (a média nunca pode pesar mais que as provas), e cada instituição define o valor exato. Confirma sempre no Guia da Candidatura da DGES antes de decidir."
+  },
+  {
+    "id": "uc-economia",
+    "instituicao": "Universidade de Coimbra — Faculdade de Economia",
+    "curso": "Economia",
+    "area": "Ciências Socioeconómicas",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Matemática A"
+      ],
+      [
+        "Economia",
+        "Matemática A"
+      ],
+      [
+        "Matemática A",
+        "Português"
+      ]
+    ],
+    "notaCandidaturaMinima": 95,
+    "ultimoColocado2025": 152.3,
+    "vagas": 151,
+    "nota": "Confirmado no Guia da Candidatura da DGES (2026): a Universidade de Coimbra aceita 3 conjuntos alternativos, incluindo Matemática A sozinha, Economia+Matemática A, ou Matemática A+Português. Verifica sempre a versão mais recente no Guia da Candidatura da DGES antes de decidir."
+  },
+  {
+    "id": "uc-gestao",
+    "instituicao": "Universidade de Coimbra — Faculdade de Economia",
+    "curso": "Gestão",
+    "area": "Ciências Socioeconómicas",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Economia",
+        "Matemática A"
+      ],
+      [
+        "Matemática A",
+        "Português"
+      ]
+    ],
+    "notaCandidaturaMinima": 95,
+    "ultimoColocado2025": 161.5,
+    "vagas": 90,
+    "nota": "CORRIGIDO: confirmado no Guia da Candidatura da DGES (2026), a Universidade de Coimbra exige sempre um PAR de provas (não Matemática A sozinha) — Economia+Matemática A ou Matemática A+Português.  2025 a lei permite entre 40-50% para a média e 45-60% para as provas (a média nunca pode pesar mais que as provas), e cada instituição define o valor exato. Confirma sempre no Guia da Candidatura da DGES antes de decidir."
+  },
+  {
+    "id": "uc-farmaceuticas",
+    "instituicao": "Universidade de Coimbra — Faculdade de Farmácia",
+    "curso": "Ciências Farmacêuticas",
+    "area": "Ciências e Tecnologias",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Biologia e Geologia",
+        "Física e Química A"
+      ],
+      [
+        "Biologia e Geologia",
+        "Matemática A"
+      ],
+      [
+        "Física e Química A",
+        "Matemática A"
+      ]
+    ],
+    "notaCandidaturaMinima": 140,
+    "ultimoColocado2025": 138.5,
+    "vagas": 212,
+    "nota": "Conjunto de provas de ingresso e peso média/provas aproximados (o típico para este tipo de curso, com o padrão legal de 50%/50%) — desde 2025 a lei permite entre 40-50% para a média e 45-60% para as provas (a média nunca pode pesar mais que as provas), e cada instituição define o valor exato. Confirma sempre no Guia da Candidatura da DGES antes de decidir."
+  },
+  {
+    "id": "uc-portugues",
+    "instituicao": "Universidade de Coimbra — Faculdade de Letras",
+    "curso": "Português",
+    "area": "Línguas e Humanidades",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Filosofia",
+        "Português"
+      ],
+      [
+        "História A",
+        "Português"
+      ],
+      [
+        "Matemática A",
+        "Português"
+      ]
+    ],
+    "notaCandidaturaMinima": 95,
+    "ultimoColocado2025": 145.8,
+    "vagas": 36,
+    "nota": "Conjunto de provas de ingresso e peso média/provas aproximados (o típico para este tipo de curso, com o padrão legal de 50%/50%) — desde 2025 a lei permite entre 40-50% para a média e 45-60% para as provas (a média nunca pode pesar mais que as provas), e cada instituição define o valor exato. Confirma sempre no Guia da Candidatura da DGES antes de decidir."
+  },
+  {
+    "id": "uc-historia",
+    "instituicao": "Universidade de Coimbra — Faculdade de Letras",
+    "curso": "História",
+    "area": "Línguas e Humanidades",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Filosofia",
+        "Português"
+      ],
+      [
+        "História A",
+        "Português"
+      ],
+      [
+        "Matemática A",
+        "Português"
+      ]
+    ],
+    "notaCandidaturaMinima": 95,
+    "ultimoColocado2025": 156.8,
+    "vagas": 63,
+    "nota": "Conjunto de provas de ingresso e peso média/provas aproximados (o típico para este tipo de curso, com o padrão legal de 50%/50%) — desde 2025 a lei permite entre 40-50% para a média e 45-60% para as provas (a média nunca pode pesar mais que as provas), e cada instituição define o valor exato. Confirma sempre no Guia da Candidatura da DGES antes de decidir."
+  },
+  {
+    "id": "uc-jornalismo",
+    "instituicao": "Universidade de Coimbra — Faculdade de Letras",
+    "curso": "Jornalismo e Comunicação",
+    "area": "Línguas e Humanidades",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Filosofia",
+        "Português"
+      ],
+      [
+        "História A",
+        "Português"
+      ],
+      [
+        "Matemática A",
+        "Português"
+      ]
+    ],
+    "notaCandidaturaMinima": 95,
+    "ultimoColocado2025": 157.0,
+    "vagas": 52,
+    "nota": "Conjunto de provas de ingresso e peso média/provas aproximados (o típico para este tipo de curso, com o padrão legal de 50%/50%) — desde 2025 a lei permite entre 40-50% para a média e 45-60% para as provas (a média nunca pode pesar mais que as provas), e cada instituição define o valor exato. Confirma sempre no Guia da Candidatura da DGES antes de decidir."
+  },
+  {
+    "id": "uc-medicina-dentaria",
+    "instituicao": "Universidade de Coimbra — Faculdade de Medicina",
+    "curso": "Medicina Dentária",
+    "area": "Ciências e Tecnologias",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Biologia e Geologia",
+        "Física e Química A"
+      ],
+      [
+        "Biologia e Geologia",
+        "Matemática A"
+      ],
+      [
+        "Física e Química A",
+        "Matemática A"
+      ]
+    ],
+    "notaCandidaturaMinima": 140,
+    "ultimoColocado2025": 177.8,
+    "vagas": 60,
+    "nota": "Exige também prova de avaliação de aptidões/entrevista, não incluída neste simulador. Conjunto de provas de ingresso e peso média/provas aproximados (o típico para este tipo de curso, com o padrão legal de 50%/50%) — desde 2025 a lei permite entre 40-50% para a média e 45-60% para as provas (a média nunca pode pesar mais que as provas), e cada instituição define o valor exato. Confirma sempre no Guia da Candidatura da DGES antes de decidir."
+  },
+  {
+    "id": "uc-medicina",
+    "instituicao": "Universidade de Coimbra — Faculdade de Medicina",
+    "curso": "Medicina",
+    "area": "Ciências e Tecnologias",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Biologia e Geologia",
+        "Física e Química A"
+      ],
+      [
+        "Biologia e Geologia",
+        "Matemática A"
+      ],
+      [
+        "Física e Química A",
+        "Matemática A"
+      ]
+    ],
+    "notaCandidaturaMinima": 140,
+    "ultimoColocado2025": 179.0,
+    "vagas": 287,
+    "nota": "Exige também prova de avaliação de aptidões/entrevista, não incluída neste simulador. Conjunto de provas de ingresso e peso média/provas aproximados (o típico para este tipo de curso, com o padrão legal de 50%/50%) — desde 2025 a lei permite entre 40-50% para a média e 45-60% para as provas (a média nunca pode pesar mais que as provas), e cada instituição define o valor exato. Confirma sempre no Guia da Candidatura da DGES antes de decidir."
+  },
+  {
+    "id": "uc-psicologia",
+    "instituicao": "Universidade de Coimbra — Faculdade de Psicologia e de Ciências da Educação",
+    "curso": "Psicologia",
+    "area": "Línguas e Humanidades",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Biologia e Geologia",
+        "Português"
+      ],
+      [
+        "Filosofia",
+        "Português"
+      ],
+      [
+        "Matemática A",
+        "Português"
+      ]
+    ],
+    "notaCandidaturaMinima": 95,
+    "ultimoColocado2025": 167.3,
+    "vagas": 131,
+    "nota": "Conjunto de provas de ingresso e peso média/provas aproximados (o típico para este tipo de curso, com o padrão legal de 50%/50%) — desde 2025 a lei permite entre 40-50% para a média e 45-60% para as provas (a média nunca pode pesar mais que as provas), e cada instituição define o valor exato. Confirma sempre no Guia da Candidatura da DGES antes de decidir."
+  },
+  {
+    "id": "evora-psicologia",
+    "instituicao": "Universidade de Évora",
+    "curso": "Psicologia",
+    "area": "Línguas e Humanidades",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Biologia e Geologia",
+        "Português"
+      ],
+      [
+        "Filosofia",
+        "Português"
+      ],
+      [
+        "Matemática A",
+        "Português"
+      ]
+    ],
+    "notaCandidaturaMinima": 95,
+    "ultimoColocado2025": 161.5,
+    "vagas": 55,
+    "nota": "Conjunto de provas de ingresso e peso média/provas aproximados (o típico para este tipo de curso, com o padrão legal de 50%/50%) — desde 2025 a lei permite entre 40-50% para a média e 45-60% para as provas (a média nunca pode pesar mais que as provas), e cada instituição define o valor exato. Confirma sempre no Guia da Candidatura da DGES antes de decidir."
+  },
+  {
+    "id": "evora-medicina-veterinaria",
+    "instituicao": "Universidade de Évora",
+    "curso": "Medicina Veterinária",
+    "area": "Ciências e Tecnologias",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Biologia e Geologia",
+        "Física e Química A"
+      ],
+      [
+        "Biologia e Geologia",
+        "Matemática A"
+      ],
+      [
+        "Física e Química A",
+        "Matemática A"
+      ]
+    ],
+    "notaCandidaturaMinima": 140,
+    "ultimoColocado2025": 161.3,
+    "vagas": 58,
+    "nota": "Conjunto de provas de ingresso e peso média/provas aproximados (o típico para este tipo de curso, com o padrão legal de 50%/50%) — desde 2025 a lei permite entre 40-50% para a média e 45-60% para as provas (a média nunca pode pesar mais que as provas), e cada instituição define o valor exato. Confirma sempre no Guia da Candidatura da DGES antes de decidir."
+  },
+  {
+    "id": "evora-arquitetura",
+    "instituicao": "Universidade de Évora",
+    "curso": "Arquitetura",
+    "area": "Artes Visuais",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Desenho A",
+        "Geometria Descritiva A"
+      ],
+      [
+        "Geometria Descritiva A",
+        "Matemática A"
+      ],
+      [
+        "Geometria Descritiva A",
+        "Português"
+      ],
+      [
+        "Desenho A",
+        "Matemática A"
+      ],
+      [
+        "Desenho A",
+        "Português"
+      ]
+    ],
+    "notaCandidaturaMinima": 95,
+    "ultimoColocado2025": 158.3,
+    "vagas": 36,
+    "nota": "Conjunto de provas de ingresso e peso média/provas aproximados (o típico para este tipo de curso, com o padrão legal de 50%/50%) — desde 2025 a lei permite entre 40-50% para a média e 45-60% para as provas (a média nunca pode pesar mais que as provas), e cada instituição define o valor exato. Confirma sempre no Guia da Candidatura da DGES antes de decidir."
+  },
+  {
+    "id": "evora-gestao",
+    "instituicao": "Universidade de Évora",
+    "curso": "Gestão",
+    "area": "Ciências Socioeconómicas",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Matemática A"
+      ]
+    ],
+    "notaCandidaturaMinima": 95,
+    "ultimoColocado2025": 150.3,
+    "vagas": 70,
+    "nota": "Conjunto de provas de ingresso e peso média/provas aproximados (o típico para este tipo de curso, com o padrão legal de 50%/50%) — desde 2025 a lei permite entre 40-50% para a média e 45-60% para as provas (a média nunca pode pesar mais que as provas), e cada instituição define o valor exato. Confirma sempre no Guia da Candidatura da DGES antes de decidir."
+  },
+  {
+    "id": "evora-design",
+    "instituicao": "Universidade de Évora",
+    "curso": "Design",
+    "area": "Artes Visuais",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Desenho A",
+        "Geometria Descritiva A"
+      ],
+      [
+        "Geometria Descritiva A",
+        "Matemática A"
+      ],
+      [
+        "Desenho A",
+        "Matemática A"
+      ],
+      [
+        "Desenho A",
+        "Português"
+      ]
+    ],
+    "notaCandidaturaMinima": 95,
+    "ultimoColocado2025": 148.0,
+    "vagas": 38,
+    "nota": "Conjunto de provas de ingresso e peso média/provas aproximados (o típico para este tipo de curso, com o padrão legal de 50%/50%) — desde 2025 a lei permite entre 40-50% para a média e 45-60% para as provas (a média nunca pode pesar mais que as provas), e cada instituição define o valor exato. Confirma sempre no Guia da Candidatura da DGES antes de decidir."
+  },
+  {
+    "id": "nova-fct-eng-informatica",
+    "instituicao": "Universidade Nova de Lisboa — Faculdade de Ciências e Tecnologia",
+    "curso": "Engenharia Informática",
+    "area": "Ciências e Tecnologias",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Matemática A"
+      ],
+      [
+        "Economia",
+        "Matemática A"
+      ],
+      [
+        "Física e Química A",
+        "Matemática A"
+      ],
+      [
+        "Geometria Descritiva A",
+        "Matemática A"
+      ],
+      [
+        "Biologia e Geologia",
+        "Matemática A"
+      ]
+    ],
+    "notaCandidaturaMinima": 95,
+    "ultimoColocado2025": 138.5,
+    "vagas": 170,
+    "nota": "CORRIGIDO: confirmado no Guia da Candidatura da DGES (2026), a Nova FCT aceita 5 conjuntos alternativos, incluindo Matemática A sozinha — não apenas Física e Química A + Matemática A. Verifica sempre a versão mais recente no Guia da Candidatura da DGES antes de deco legal de 50%/50%) — desde 2025 a lei permite entre 40-50% para a média e 45-60% para as provas (a média nunca pode pesar mais que as provas), e cada instituição define o valor exato. Confirma sempre no Guia da Candidatura da DGES antes de decidir."
+  },
+  {
+    "id": "nova-fct-eng-civil",
+    "instituicao": "Universidade Nova de Lisboa — Faculdade de Ciências e Tecnologia",
+    "curso": "Engenharia Civil",
+    "area": "Ciências e Tecnologias",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Física e Química A",
+        "Matemática A"
+      ]
+    ],
+    "notaCandidaturaMinima": 95,
+    "ultimoColocado2025": 138.5,
+    "vagas": 47,
+    "nota": "Conjunto de provas de ingresso e peso média/provas aproximados (o típico para este tipo de curso, com o padrão legal de 50%/50%) — desde 2025 a lei permite entre 40-50% para a média e 45-60% para as provas (a média nunca pode pesar mais que as provas), e cada instituição define o valor exato. Confirma sempre no Guia da Candidatura da DGES antes de decidir."
+  },
+  {
+    "id": "nova-fcsh-ciencias-comunicacao",
+    "instituicao": "Universidade Nova de Lisboa — Faculdade de Ciências Sociais e Humanas",
+    "curso": "Ciências da Comunicação",
+    "area": "Línguas e Humanidades",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Filosofia",
+        "Português"
+      ],
+      [
+        "História A",
+        "Português"
+      ],
+      [
+        "Matemática A",
+        "Português"
+      ]
+    ],
+    "notaCandidaturaMinima": 95,
+    "ultimoColocado2025": 163.5,
+    "vagas": 96,
+    "nota": "Conjunto de provas de ingresso e peso média/provas aproximados (o típico para este tipo de curso, com o padrão legal de 50%/50%) — desde 2025 a lei permite entre 40-50% para a média e 45-60% para as provas (a média nunca pode pesar mais que as provas), e cada instituição define o valor exato. Confirma sempre no Guia da Candidatura da DGES antes de decidir."
+  },
+  {
+    "id": "nova-fcsh-historia",
+    "instituicao": "Universidade Nova de Lisboa — Faculdade de Ciências Sociais e Humanas",
+    "curso": "História",
+    "area": "Línguas e Humanidades",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Filosofia",
+        "Português"
+      ],
+      [
+        "História A",
+        "Português"
+      ],
+      [
+        "Matemática A",
+        "Português"
+      ]
+    ],
+    "notaCandidaturaMinima": 95,
+    "ultimoColocado2025": 161.3,
+    "vagas": 45,
+    "nota": "Conjunto de provas de ingresso e peso média/provas aproximados (o típico para este tipo de curso, com o padrão legal de 50%/50%) — desde 2025 a lei permite entre 40-50% para a média e 45-60% para as provas (a média nunca pode pesar mais que as provas), e cada instituição define o valor exato. Confirma sempre no Guia da Candidatura da DGES antes de decidir."
+  },
+  {
+    "id": "nova-medicina",
+    "instituicao": "Universidade Nova de Lisboa — Faculdade de Ciências Médicas",
+    "curso": "Medicina",
+    "area": "Ciências e Tecnologias",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Biologia e Geologia",
+        "Física e Química A"
+      ],
+      [
+        "Biologia e Geologia",
+        "Matemática A"
+      ],
+      [
+        "Física e Química A",
+        "Matemática A"
+      ]
+    ],
+    "notaCandidaturaMinima": 140,
+    "ultimoColocado2025": 180.3,
+    "vagas": 231,
+    "nota": "Exige também prova de avaliação de aptidões/entrevista, não incluída neste simulador. Conjunto de provas de ingresso e peso média/provas aproximados (o típico para este tipo de curso, com o padrão legal de 50%/50%) — desde 2025 a lei permite entre 40-50% para a média e 45-60% para as provas (a média nunca pode pesar mais que as provas), e cada instituição define o valor exato. Confirma sempre no Guia da Candidatura da DGES antes de decidir."
+  },
+  {
+    "id": "nova-isegi-ciencia-dados",
+    "instituicao": "Universidade Nova de Lisboa — NOVA IMS",
+    "curso": "Ciência de Dados",
+    "area": "Ciências e Tecnologias",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Matemática A"
+      ],
+      [
+        "Economia",
+        "Matemática A"
+      ],
+      [
+        "Física e Química A",
+        "Matemática A"
+      ],
+      [
+        "Geografia A",
+        "Matemática A"
+      ],
+      [
+        "Geometria Descritiva A",
+        "Matemática A"
+      ],
+      [
+        "Matemática A",
+        "Português"
+      ],
+      [
+        "Biologia e Geologia",
+        "Matemática A"
+      ]
+    ],
+    "notaCandidaturaMinima": 100,
+    "notaMinimaProvas": 95,
+    "ultimoColocado2025": 168.0,
+    "vagas": 45,
+    "nota": "CORRIGIDO: confirmado no Guia da Candidatura da DGES (2026), a NOVA IMS aceita 7 conjuntos alternativos, incluindo Matemática A sozinha. Nota mínima de candidatura corrigida para 100, provas mínima 95. Verifica sempre a versão mais recente no Guia da Candidatura da DGES antes de decurso, com o padrão legal de 50%/50%) — desde 2025 a lei permite entre 40-50% para a média e 45-60% para as provas (a média nunca pode pesar mais que as provas), e cada instituição define o valor exato. Confirma sempre no Guia da Candidatura da DGES antes de decidir."
+  },
+  {
+    "id": "uminho-arquitetura",
+    "instituicao": "Universidade do Minho",
+    "curso": "Arquitetura",
+    "area": "Artes Visuais",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Desenho A",
+        "Geometria Descritiva A"
+      ],
+      [
+        "Geometria Descritiva A",
+        "Matemática A"
+      ],
+      [
+        "Geometria Descritiva A",
+        "Português"
+      ],
+      [
+        "Desenho A",
+        "Matemática A"
+      ],
+      [
+        "Desenho A",
+        "Português"
+      ]
+    ],
+    "notaCandidaturaMinima": 95,
+    "ultimoColocado2025": 172.8,
+    "vagas": 55,
+    "nota": "Conjunto de provas de ingresso e peso média/provas aproximados (o típico para este tipo de curso, com o padrão legal de 50%/50%) — desde 2025 a lei permite entre 40-50% para a média e 45-60% para as provas (a média nunca pode pesar mais que as provas), e cada instituição define o valor exato. Confirma sempre no Guia da Candidatura da DGES antes de decidir."
+  },
+  {
+    "id": "uminho-direito",
+    "instituicao": "Universidade do Minho",
+    "curso": "Direito",
+    "area": "Línguas e Humanidades",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Filosofia",
+        "Português"
+      ],
+      [
+        "História A",
+        "Português"
+      ]
+    ],
+    "notaCandidaturaMinima": 120,
+    "ultimoColocado2025": 173.3,
+    "vagas": 110,
+    "nota": "Conjunto de provas de ingresso e peso média/provas aproximados (o típico para este tipo de curso, com o padrão legal de 50%/50%) — desde 2025 a lei permite entre 40-50% para a média e 45-60% para as provas (a média nunca pode pesar mais que as provas), e cada instituição define o valor exato. Confirma sempre no Guia da Candidatura da DGES antes de decidir."
+  },
+  {
+    "id": "uminho-economia",
+    "instituicao": "Universidade do Minho",
+    "curso": "Economia",
+    "area": "Ciências Socioeconómicas",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Matemática A"
+      ],
+      [
+        "Filosofia",
+        "Matemática A"
+      ],
+      [
+        "Física e Química A",
+        "Matemática A"
+      ],
+      [
+        "Geografia A",
+        "Matemática A"
+      ],
+      [
+        "Matemática A",
+        "Português"
+      ],
+      [
+        "Economia",
+        "Matemática A"
+      ]
+    ],
+    "notaCandidaturaMinima": 100,
+    "ultimoColocado2025": 164.5,
+    "vagas": 84,
+    "nota": "Confirmado no Guia da Candidatura da DGES (2026): a Universidade do Minho aceita 7 conjuntos alternativos (Matemática A sozinha, ou combinada com Filosofia, Física e Química A, Geografia A, Inglês, Português ou Economia). Nota mínima de candidatura 100 pontos. Este simulador não suporta Inglês como prova de ingresso — considera essa opção à parte se tiveres essa disciplina. Verifica sempre a versão mais recente no Guia da Candidaturempre no Guia da Candidatura da DGES antes de decidir."
+  },
+  {
+    "id": "uminho-gestao",
+    "instituicao": "Universidade do Minho",
+    "curso": "Gestão",
+    "area": "Ciências Socioeconómicas",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Matemática A"
+      ],
+      [
+        "Economia",
+        "Matemática A"
+      ],
+      [
+        "Matemática A",
+        "Português"
+      ]
+    ],
+    "notaCandidaturaMinima": 100,
+    "ultimoColocado2025": 168.8,
+    "vagas": 94,
+    "nota": "Confirmado no Guia da Candidatura da DGES (2026): Economia+Matemática A, Matemática A+Português, ou Matemática A sozinha, e nota mínima de candidatura de 100 pontos. A DGES também aceita Inglês+Matemática A, mas este simulador não suporta Inglês como prova de ingresso — considera essa opção à parte se tiveres essa disciplina. Verifica sempre a versão mais recente no Guia da Candidature no Guia da Candidatura da DGES antes de decidir."
+  },
+  {
+    "id": "uminho-psicologia",
+    "instituicao": "Universidade do Minho",
+    "curso": "Psicologia",
+    "area": "Línguas e Humanidades",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Biologia e Geologia",
+        "Português"
+      ],
+      [
+        "Filosofia",
+        "Português"
+      ],
+      [
+        "Matemática A",
+        "Português"
+      ]
+    ],
+    "notaCandidaturaMinima": 95,
+    "ultimoColocado2025": 169.8,
+    "vagas": 67,
+    "nota": "Conjunto de provas de ingresso e peso média/provas aproximados (o típico para este tipo de curso, com o padrão legal de 50%/50%) — desde 2025 a lei permite entre 40-50% para a média e 45-60% para as provas (a média nunca pode pesar mais que as provas), e cada instituição define o valor exato. Confirma sempre no Guia da Candidatura da DGES antes de decidir."
+  },
+  {
+    "id": "uminho-eng-informatica",
+    "instituicao": "Universidade do Minho",
+    "curso": "Engenharia Informática",
+    "area": "Ciências e Tecnologias",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Matemática A"
+      ],
+      [
+        "Matemática A",
+        "Português"
+      ],
+      [
+        "Biologia e Geologia",
+        "Matemática A"
+      ],
+      [
+        "Física e Química A",
+        "Matemática A"
+      ]
+    ],
+    "notaCandidaturaMinima": 100,
+    "ultimoColocado2025": 135.5,
+    "vagas": 170,
+    "nota": "Confirmado no Guia da Candidatura da DGES (2026): a Universidade do Minho aceita 4 conjuntos alternativos, incluindo Matemática A sozinha — não apenas Física e Química A + Matemática A. Nota mínima de candidatura corrigida para 100 pontos. Verifica sempre a versão mais recente no Guia da Candidatura da DGES antes de decempre no Guia da Candidatura da DGES antes de decidir."
+  },
+  {
+    "id": "uminho-eng-aeroespacial",
+    "instituicao": "Universidade do Minho",
+    "curso": "Engenharia Aeroespacial",
+    "area": "Ciências e Tecnologias",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Física e Química A",
+        "Matemática A"
+      ]
+    ],
+    "notaCandidaturaMinima": 95,
+    "ultimoColocado2025": 188.5,
+    "vagas": 31,
+    "nota": "Conjunto de provas de ingresso e peso média/provas aproximados (o típico para este tipo de curso, com o padrão legal de 50%/50%) — desde 2025 a lei permite entre 40-50% para a média e 45-60% para as provas (a média nunca pode pesar mais que as provas), e cada instituição define o valor exato. Confirma sempre no Guia da Candidatura da DGES antes de decidir."
+  },
+  {
+    "id": "uminho-ciencias-comunicacao",
+    "instituicao": "Universidade do Minho",
+    "curso": "Ciências da Comunicação",
+    "area": "Línguas e Humanidades",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Filosofia",
+        "Português"
+      ],
+      [
+        "História A",
+        "Português"
+      ],
+      [
+        "Matemática A",
+        "Português"
+      ]
+    ],
+    "notaCandidaturaMinima": 95,
+    "ultimoColocado2025": 163.8,
+    "vagas": 65,
+    "nota": "Conjunto de provas de ingresso e peso média/provas aproximados (o típico para este tipo de curso, com o padrão legal de 50%/50%) — desde 2025 a lei permite entre 40-50% para a média e 45-60% para as provas (a média nunca pode pesar mais que as provas), e cada instituição define o valor exato. Confirma sempre no Guia da Candidatura da DGES antes de decidir."
+  },
+  {
+    "id": "uminho-design-produto",
+    "instituicao": "Universidade do Minho",
+    "curso": "Design de Produto",
+    "area": "Artes Visuais",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Desenho A",
+        "Geometria Descritiva A"
+      ],
+      [
+        "Geometria Descritiva A",
+        "Matemática A"
+      ],
+      [
+        "Desenho A",
+        "Matemática A"
+      ],
+      [
+        "Desenho A",
+        "Português"
+      ]
+    ],
+    "notaCandidaturaMinima": 95,
+    "ultimoColocado2025": 162.8,
+    "vagas": 33,
+    "nota": "Conjunto de provas de ingresso e peso média/provas aproximados (o típico para este tipo de curso, com o padrão legal de 50%/50%) — desde 2025 a lei permite entre 40-50% para a média e 45-60% para as provas (a média nunca pode pesar mais que as provas), e cada instituição define o valor exato. Confirma sempre no Guia da Candidatura da DGES antes de decidir."
+  },
+  {
+    "id": "porto-flup-ciencias-comunicacao",
+    "instituicao": "Universidade do Porto — Faculdade de Letras",
+    "curso": "Ciências da Comunicação",
+    "area": "Línguas e Humanidades",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Filosofia",
+        "Português"
+      ],
+      [
+        "História A",
+        "Português"
+      ],
+      [
+        "Matemática A",
+        "Português"
+      ]
+    ],
+    "notaCandidaturaMinima": 95,
+    "ultimoColocado2025": 174.0,
+    "vagas": 75,
+    "nota": "Conjunto de provas de ingresso e peso média/provas aproximados (o típico para este tipo de curso, com o padrão legal de 50%/50%) — desde 2025 a lei permite entre 40-50% para a média e 45-60% para as provas (a média nunca pode pesar mais que as provas), e cada instituição define o valor exato. Confirma sempre no Guia da Candidatura da DGES antes de decidir."
+  },
+  {
+    "id": "porto-flup-historia",
+    "instituicao": "Universidade do Porto — Faculdade de Letras",
+    "curso": "História",
+    "area": "Línguas e Humanidades",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Filosofia",
+        "Português"
+      ],
+      [
+        "História A",
+        "Português"
+      ],
+      [
+        "Matemática A",
+        "Português"
+      ]
+    ],
+    "notaCandidaturaMinima": 95,
+    "ultimoColocado2025": 159.0,
+    "vagas": 77,
+    "nota": "Conjunto de provas de ingresso e peso média/provas aproximados (o típico para este tipo de curso, com o padrão legal de 50%/50%) — desde 2025 a lei permite entre 40-50% para a média e 45-60% para as provas (a média nunca pode pesar mais que as provas), e cada instituição define o valor exato. Confirma sempre no Guia da Candidatura da DGES antes de decidir."
+  },
+  {
+    "id": "porto-fmup-medicina",
+    "instituicao": "Universidade do Porto — Faculdade de Medicina",
+    "curso": "Medicina",
+    "area": "Ciências e Tecnologias",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Biologia e Geologia",
+        "Física e Química A"
+      ],
+      [
+        "Biologia e Geologia",
+        "Matemática A"
+      ],
+      [
+        "Física e Química A",
+        "Matemática A"
+      ]
+    ],
+    "notaCandidaturaMinima": 140,
+    "ultimoColocado2025": 185.3,
+    "vagas": 275,
+    "nota": "Exige também prova de avaliação de aptidões/entrevista, não incluída neste simulador. Conjunto de provas de ingresso e peso média/provas aproximados (o típico para este tipo de curso, com o padrão legal de 50%/50%) — desde 2025 a lei permite entre 40-50% para a média e 45-60% para as provas (a média nunca pode pesar mais que as provas), e cada instituição define o valor exato. Confirma sempre no Guia da Candidatura da DGES antes de decidir."
+  },
+  {
+    "id": "porto-fmdup-medicina-dentaria",
+    "instituicao": "Universidade do Porto — Faculdade de Medicina Dentária",
+    "curso": "Medicina Dentária",
+    "area": "Ciências e Tecnologias",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Biologia e Geologia",
+        "Física e Química A"
+      ],
+      [
+        "Biologia e Geologia",
+        "Matemática A"
+      ],
+      [
+        "Física e Química A",
+        "Matemática A"
+      ]
+    ],
+    "notaCandidaturaMinima": 140,
+    "ultimoColocado2025": 178.3,
+    "vagas": 66,
+    "nota": "Exige também prova de avaliação de aptidões/entrevista, não incluída neste simulador. Conjunto de provas de ingresso e peso média/provas aproximados (o típico para este tipo de curso, com o padrão legal de 50%/50%) — desde 2025 a lei permite entre 40-50% para a média e 45-60% para as provas (a média nunca pode pesar mais que as provas), e cada instituição define o valor exato. Confirma sempre no Guia da Candidatura da DGES antes de decidir."
+  },
+  {
+    "id": "porto-fpceup-psicologia",
+    "instituicao": "Universidade do Porto — Faculdade de Psicologia e de Ciências da Educação",
+    "curso": "Psicologia",
+    "area": "Línguas e Humanidades",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Biologia e Geologia",
+        "Português"
+      ],
+      [
+        "Filosofia",
+        "Português"
+      ],
+      [
+        "Matemática A",
+        "Português"
+      ]
+    ],
+    "notaCandidaturaMinima": 95,
+    "ultimoColocado2025": 174.0,
+    "vagas": 123,
+    "nota": "Conjunto de provas de ingresso e peso média/provas aproximados (o típico para este tipo de curso, com o padrão legal de 50%/50%) — desde 2025 a lei permite entre 40-50% para a média e 45-60% para as provas (a média nunca pode pesar mais que as provas), e cada instituição define o valor exato. Confirma sempre no Guia da Candidatura da DGES antes de decidir."
+  },
+  {
+    "id": "porto-farmacia",
+    "instituicao": "Universidade do Porto — Faculdade de Farmácia",
+    "curso": "Ciências Farmacêuticas",
+    "area": "Ciências e Tecnologias",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Biologia e Geologia",
+        "Física e Química A"
+      ],
+      [
+        "Biologia e Geologia",
+        "Matemática A"
+      ],
+      [
+        "Física e Química A",
+        "Matemática A"
+      ]
+    ],
+    "notaCandidaturaMinima": 140,
+    "ultimoColocado2025": 151.0,
+    "vagas": 175,
+    "nota": "Conjunto de provas de ingresso e peso média/provas aproximados (o típico para este tipo de curso, com o padrão legal de 50%/50%) — desde 2025 a lei permite entre 40-50% para a média e 45-60% para as provas (a média nunca pode pesar mais que as provas), e cada instituição define o valor exato. Confirma sempre no Guia da Candidatura da DGES antes de decidir."
+  },
+  {
+    "id": "porto-icbas-medicina",
+    "instituicao": "Universidade do Porto — Instituto de Ciências Biomédicas Abel Salazar",
+    "curso": "Medicina",
+    "area": "Ciências e Tecnologias",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Biologia e Geologia",
+        "Física e Química A"
+      ],
+      [
+        "Biologia e Geologia",
+        "Matemática A"
+      ],
+      [
+        "Física e Química A",
+        "Matemática A"
+      ]
+    ],
+    "notaCandidaturaMinima": 140,
+    "ultimoColocado2025": 184.7,
+    "vagas": 155,
+    "nota": "Exige também prova de avaliação de aptidões/entrevista, não incluída neste simulador. Conjunto de provas de ingresso e peso média/provas aproximados (o típico para este tipo de curso, com o padrão legal de 50%/50%) — desde 2025 a lei permite entre 40-50% para a média e 45-60% para as provas (a média nunca pode pesar mais que as provas), e cada instituição define o valor exato. Confirma sempre no Guia da Candidatura da DGES antes de decidir."
+  },
+  {
+    "id": "porto-icbas-medicina-veterinaria",
+    "instituicao": "Universidade do Porto — Instituto de Ciências Biomédicas Abel Salazar",
+    "curso": "Medicina Veterinária",
+    "area": "Ciências e Tecnologias",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Biologia e Geologia",
+        "Física e Química A"
+      ],
+      [
+        "Biologia e Geologia",
+        "Matemática A"
+      ],
+      [
+        "Física e Química A",
+        "Matemática A"
+      ]
+    ],
+    "notaCandidaturaMinima": 140,
+    "ultimoColocado2025": 171.3,
+    "vagas": 63,
+    "nota": "Conjunto de provas de ingresso e peso média/provas aproximados (o típico para este tipo de curso, com o padrão legal de 50%/50%) — desde 2025 a lei permite entre 40-50% para a média e 45-60% para as provas (a média nunca pode pesar mais que as provas), e cada instituição define o valor exato. Confirma sempre no Guia da Candidatura da DGES antes de decidir."
+  },
+  {
+    "id": "porto-feup-eng-civil",
+    "instituicao": "Universidade do Porto — Faculdade de Engenharia (FEUP)",
+    "curso": "Engenharia Civil",
+    "area": "Ciências e Tecnologias",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Física e Química A",
+        "Matemática A"
+      ]
+    ],
+    "notaCandidaturaMinima": 100,
+    "notaMinimaProvas": 95,
+    "ultimoColocado2025": 152.5,
+    "vagas": 121,
+    "nota": "Conjunto de provas de ingresso CONFIRMADO no Guia da Candidatura da DGES (2026): apenas Física e Química A + Matemática A, correto. Nota mínima de candidatura corrigida para 100 pontos, nota mínima nas provas 95 pontos. — desde 2025 a lei permite entre 40-50% para a média e 45-60% para as provas (a média nunca pode pesar mais que as provas), e cada instituição define o valor exato. Confirma sempre no Guia da Candidatura da DGES antes de decidir."
+  },
+  {
+    "id": "porto-feup-eng-mecanica",
+    "instituicao": "Universidade do Porto — Faculdade de Engenharia (FEUP)",
+    "curso": "Engenharia Mecânica",
+    "area": "Ciências e Tecnologias",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Física e Química A",
+        "Matemática A"
+      ]
+    ],
+    "notaCandidaturaMinima": 140,
+    "notaMinimaProvas": 140,
+    "ultimoColocado2025": 179.8,
+    "vagas": 210,
+    "nota": "Conjunto de provas de ingresso CONFIRMADO no Guia da Candidatura da DGES (2026): apenas Física e Química A + Matemática A, correto. Nota mínima de candidatura corrigida para 140 pontos (não 95) — nota mínima também nas provas. para este tipo de curso, com o padrão legal de 50%/50%) — desde 2025 a lei permite entre 40-50% para a média e 45-60% para as provas (a média nunca pode pesar mais que as provas), e cada instituição define o valor exato. Confirma sempre no Guia da Candidatura da DGES antes de decidir."
+  },
+  {
+    "id": "porto-feup-eng-eletrotecnica",
+    "instituicao": "Universidade do Porto — Faculdade de Engenharia (FEUP)",
+    "curso": "Engenharia Eletrotécnica e de Computadores",
+    "area": "Ciências e Tecnologias",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Física e Química A",
+        "Matemática A"
+      ]
+    ],
+    "notaCandidaturaMinima": 100,
+    "notaMinimaProvas": 100,
+    "ultimoColocado2025": 148.3,
+    "vagas": 230,
+    "nota": "Conjunto de provas de ingresso CONFIRMADO no Guia da Candidatura da DGES (2026): apenas Física e Química A + Matemática A, correto. Nota mínima de candidatura corrigida para 100 pontos. rovas aproximados (o típico para este tipo de curso, com o padrão legal de 50%/50%) — desde 2025 a lei permite entre 40-50% para a média e 45-60% para as provas (a média nunca pode pesar mais que as provas), e cada instituição define o valor exato. Confirma sempre no Guia da Candidatura da DGES antes de decidir."
+  },
+  {
+    "id": "porto-feup-bioengenharia",
+    "instituicao": "Universidade do Porto — Faculdade de Engenharia (FEUP)",
+    "curso": "Bioengenharia",
+    "area": "Ciências e Tecnologias",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Biologia e Geologia",
+        "Matemática A"
+      ],
+      [
+        "Física e Química A",
+        "Matemática A"
+      ]
+    ],
+    "notaCandidaturaMinima": 95,
+    "ultimoColocado2025": 180.0,
+    "vagas": 98,
+    "nota": "CORRIGIDO: confirmado no Guia da Candidatura da DGES (2026), a FEUP aceita Biologia e Geologia + Matemática A OU Física e Química A + Matemática A — não apenas FQA+MatA. ste tipo de curso, com o padrão legal de 50%/50%) — desde 2025 a lei permite entre 40-50% para a média e 45-60% para as provas (a média nunca pode pesar mais que as provas), e cada instituição define o valor exato. Confirma sempre no Guia da Candidatura da DGES antes de decidir."
+  },
+  {
+    "id": "lisboa-faul-design",
+    "instituicao": "Universidade de Lisboa — Faculdade de Arquitetura",
+    "curso": "Design",
+    "area": "Artes Visuais",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Desenho A",
+        "Geometria Descritiva A"
+      ],
+      [
+        "Geometria Descritiva A",
+        "Matemática A"
+      ],
+      [
+        "Desenho A",
+        "Matemática A"
+      ],
+      [
+        "Desenho A",
+        "Português"
+      ]
+    ],
+    "notaCandidaturaMinima": 95,
+    "ultimoColocado2025": 173.5,
+    "vagas": 50,
+    "nota": "Conjunto de provas de ingresso e peso média/provas aproximados (o típico para este tipo de curso, com o padrão legal de 50%/50%) — desde 2025 a lei permite entre 40-50% para a média e 45-60% para as provas (a média nunca pode pesar mais que as provas), e cada instituição define o valor exato. Confirma sempre no Guia da Candidatura da DGES antes de decidir."
+  },
+  {
+    "id": "lisboa-fbaul-design-comunicacao",
+    "instituicao": "Universidade de Lisboa — Faculdade de Belas-Artes",
+    "curso": "Design de Comunicação",
+    "area": "Artes Visuais",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Desenho A",
+        "Geometria Descritiva A"
+      ],
+      [
+        "Geometria Descritiva A",
+        "Matemática A"
+      ],
+      [
+        "Desenho A",
+        "Matemática A"
+      ],
+      [
+        "Desenho A",
+        "Português"
+      ]
+    ],
+    "notaCandidaturaMinima": 95,
+    "ultimoColocado2025": 160.8,
+    "vagas": 84,
+    "nota": "Conjunto de provas de ingresso e peso média/provas aproximados (o típico para este tipo de curso, com o padrão legal de 50%/50%) — desde 2025 a lei permite entre 40-50% para a média e 45-60% para as provas (a média nunca pode pesar mais que as provas), e cada instituição define o valor exato. Confirma sempre no Guia da Candidatura da DGES antes de decidir."
+  },
+  {
+    "id": "lisboa-fbaul-pintura",
+    "instituicao": "Universidade de Lisboa — Faculdade de Belas-Artes",
+    "curso": "Pintura",
+    "area": "Artes Visuais",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Desenho A"
+      ],
+      [
+        "Geometria Descritiva A"
+      ]
+    ],
+    "notaCandidaturaMinima": 95,
+    "ultimoColocado2025": 158.0,
+    "vagas": 55,
+    "nota": "Conjunto de provas de ingresso e peso média/provas aproximados (o típico para este tipo de curso, com o padrão legal de 50%/50%) — desde 2025 a lei permite entre 40-50% para a média e 45-60% para as provas (a média nunca pode pesar mais que as provas), e cada instituição define o valor exato. Confirma sempre no Guia da Candidatura da DGES antes de decidir."
+  },
+  {
+    "id": "lisboa-fcul-eng-informatica",
+    "instituicao": "Universidade de Lisboa — Faculdade de Ciências",
+    "curso": "Engenharia Informática",
+    "area": "Ciências e Tecnologias",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Biologia e Geologia",
+        "Matemática A"
+      ],
+      [
+        "Economia",
+        "Matemática A"
+      ],
+      [
+        "Física e Química A",
+        "Matemática A"
+      ],
+      [
+        "Geometria Descritiva A",
+        "Matemática A"
+      ]
+    ],
+    "notaCandidaturaMinima": 120,
+    "notaMinimaProvas": 100,
+    "ultimoColocado2025": 134.3,
+    "vagas": 105,
+    "nota": "CORRIGIDO: confirmado no site da FCUL, Matemática A é obrigatória e combina-se com uma de entre Biologia e Geologia, Economia, Física e Química A ou Geometria Descritiva A (4 conjuntos). Nota mínima de candidatura corrigida para 120, provas mínima 100. gresso e peso média/provas aproximados (o típico para este tipo de curso, com o padrão legal de 50%/50%) — desde 2025 a lei permite entre 40-50% para a média e 45-60% para as provas (a média nunca pode pesar mais que as provas), e cada instituição define o valor exato. Confirma sempre no Guia da Candidatura da DGES antes de decidir."
+  },
+  {
+    "id": "lisboa-fcul-matematica",
+    "instituicao": "Universidade de Lisboa — Faculdade de Ciências",
+    "curso": "Matemática",
+    "area": "Ciências e Tecnologias",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Matemática A"
+      ],
+      [
+        "Economia",
+        "Matemática A"
+      ],
+      [
+        "Física e Química A",
+        "Matemática A"
+      ],
+      [
+        "Geometria Descritiva A",
+        "Matemática A"
+      ],
+      [
+        "Matemática A",
+        "Português"
+      ],
+      [
+        "Biologia e Geologia",
+        "Matemática A"
+      ]
+    ],
+    "notaCandidaturaMinima": 120,
+    "notaMinimaProvas": 100,
+    "ultimoColocado2025": 140.0,
+    "vagas": 50,
+    "nota": "CORRIGIDO: confirmado no Guia da Candidatura da DGES (2026), a FCUL aceita 6 conjuntos alternativos, incluindo Matemática A sozinha. Nota mínima de candidatura corrigida para 120, provas mínima 100. a/provas aproximados (o típico para este tipo de curso, com o padrão legal de 50%/50%) — desde 2025 a lei permite entre 40-50% para a média e 45-60% para as provas (a média nunca pode pesar mais que as provas), e cada instituição define o valor exato. Confirma sempre no Guia da Candidatura da DGES antes de decidir."
+  },
+  {
+    "id": "lisboa-farmacia",
+    "instituicao": "Universidade de Lisboa — Faculdade de Farmácia",
+    "curso": "Ciências Farmacêuticas",
+    "area": "Ciências e Tecnologias",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Biologia e Geologia",
+        "Física e Química A"
+      ],
+      [
+        "Biologia e Geologia",
+        "Matemática A"
+      ],
+      [
+        "Física e Química A",
+        "Matemática A"
+      ]
+    ],
+    "notaCandidaturaMinima": 140,
+    "ultimoColocado2025": 148.8,
+    "vagas": 215,
+    "nota": "Conjunto de provas de ingresso e peso média/provas aproximados (o típico para este tipo de curso, com o padrão legal de 50%/50%) — desde 2025 a lei permite entre 40-50% para a média e 45-60% para as provas (a média nunca pode pesar mais que as provas), e cada instituição define o valor exato. Confirma sempre no Guia da Candidatura da DGES antes de decidir."
+  },
+  {
+    "id": "lisboa-flul-historia",
+    "instituicao": "Universidade de Lisboa — Faculdade de Letras",
+    "curso": "História",
+    "area": "Línguas e Humanidades",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Filosofia",
+        "Português"
+      ],
+      [
+        "História A",
+        "Português"
+      ],
+      [
+        "Matemática A",
+        "Português"
+      ]
+    ],
+    "notaCandidaturaMinima": 95,
+    "ultimoColocado2025": 150.5,
+    "vagas": 61,
+    "nota": "Conjunto de provas de ingresso e peso média/provas aproximados (o típico para este tipo de curso, com o padrão legal de 50%/50%) — desde 2025 a lei permite entre 40-50% para a média e 45-60% para as provas (a média nunca pode pesar mais que as provas), e cada instituição define o valor exato. Confirma sempre no Guia da Candidatura da DGES antes de decidir."
+  },
+  {
+    "id": "lisboa-flul-traducao",
+    "instituicao": "Universidade de Lisboa — Faculdade de Letras",
+    "curso": "Tradução",
+    "area": "Línguas e Humanidades",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Filosofia",
+        "Português"
+      ],
+      [
+        "História A",
+        "Português"
+      ],
+      [
+        "Matemática A",
+        "Português"
+      ]
+    ],
+    "notaCandidaturaMinima": 95,
+    "ultimoColocado2025": 141.8,
+    "vagas": 58,
+    "nota": "Conjunto de provas de ingresso e peso média/provas aproximados (o típico para este tipo de curso, com o padrão legal de 50%/50%) — desde 2025 a lei permite entre 40-50% para a média e 45-60% para as provas (a média nunca pode pesar mais que as provas), e cada instituição define o valor exato. Confirma sempre no Guia da Candidatura da DGES antes de decidir."
+  },
+  {
+    "id": "lisboa-fmdul-medicina-dentaria",
+    "instituicao": "Universidade de Lisboa — Faculdade de Medicina Dentária",
+    "curso": "Medicina Dentária",
+    "area": "Ciências e Tecnologias",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Biologia e Geologia",
+        "Física e Química A"
+      ],
+      [
+        "Biologia e Geologia",
+        "Matemática A"
+      ],
+      [
+        "Física e Química A",
+        "Matemática A"
+      ]
+    ],
+    "notaCandidaturaMinima": 140,
+    "ultimoColocado2025": 177.8,
+    "vagas": 70,
+    "nota": "Exige também prova de avaliação de aptidões/entrevista, não incluída neste simulador. Conjunto de provas de ingresso e peso média/provas aproximados (o típico para este tipo de curso, com o padrão legal de 50%/50%) — desde 2025 a lei permite entre 40-50% para a média e 45-60% para as provas (a média nunca pode pesar mais que as provas), e cada instituição define o valor exato. Confirma sempre no Guia da Candidatura da DGES antes de decidir."
+  },
+  {
+    "id": "lisboa-fmvul-medicina-veterinaria",
+    "instituicao": "Universidade de Lisboa — Faculdade de Medicina Veterinária",
+    "curso": "Medicina Veterinária",
+    "area": "Ciências e Tecnologias",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Biologia e Geologia",
+        "Física e Química A"
+      ],
+      [
+        "Biologia e Geologia",
+        "Matemática A"
+      ],
+      [
+        "Física e Química A",
+        "Matemática A"
+      ]
+    ],
+    "notaCandidaturaMinima": 140,
+    "ultimoColocado2025": 166.3,
+    "vagas": 109,
+    "nota": "Conjunto de provas de ingresso e peso média/provas aproximados (o típico para este tipo de curso, com o padrão legal de 50%/50%) — desde 2025 a lei permite entre 40-50% para a média e 45-60% para as provas (a média nunca pode pesar mais que as provas), e cada instituição define o valor exato. Confirma sempre no Guia da Candidatura da DGES antes de decidir."
+  },
+  {
+    "id": "lisboa-iscsp-ciencia-politica",
+    "instituicao": "Universidade de Lisboa — Instituto Superior de Ciências Sociais e Políticas",
+    "curso": "Ciência Política",
+    "area": "Ciências Socioeconómicas",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Filosofia",
+        "Português"
+      ],
+      [
+        "História A",
+        "Português"
+      ],
+      [
+        "Matemática A",
+        "Português"
+      ]
+    ],
+    "notaCandidaturaMinima": 95,
+    "ultimoColocado2025": 158.3,
+    "vagas": 44,
+    "nota": "Conjunto de provas de ingresso e peso média/provas aproximados (o típico para este tipo de curso, com o padrão legal de 50%/50%) — desde 2025 a lei permite entre 40-50% para a média e 45-60% para as provas (a média nunca pode pesar mais que as provas), e cada instituição define o valor exato. Confirma sempre no Guia da Candidatura da DGES antes de decidir."
+  },
+  {
+    "id": "lisboa-iscsp-relacoes-internacionais",
+    "instituicao": "Universidade de Lisboa — Instituto Superior de Ciências Sociais e Políticas",
+    "curso": "Relações Internacionais",
+    "area": "Ciências Socioeconómicas",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Filosofia",
+        "Português"
+      ],
+      [
+        "História A",
+        "Português"
+      ],
+      [
+        "Matemática A",
+        "Português"
+      ]
+    ],
+    "notaCandidaturaMinima": 95,
+    "ultimoColocado2025": 160.8,
+    "vagas": 70,
+    "nota": "Conjunto de provas de ingresso e peso média/provas aproximados (o típico para este tipo de curso, com o padrão legal de 50%/50%) — desde 2025 a lei permite entre 40-50% para a média e 45-60% para as provas (a média nunca pode pesar mais que as provas), e cada instituição define o valor exato. Confirma sempre no Guia da Candidatura da DGES antes de decidir."
+  },
+  {
+    "id": "lisboa-ist-eng-civil",
+    "instituicao": "Universidade de Lisboa — Instituto Superior Técnico",
+    "curso": "Engenharia Civil",
+    "area": "Ciências e Tecnologias",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Física e Química A",
+        "Matemática A"
+      ]
+    ],
+    "notaCandidaturaMinima": 120,
+    "notaMinimaProvas": 100,
+    "ultimoColocado2025": 141.3,
+    "vagas": 138,
+    "nota": "Conjunto de provas de ingresso CONFIRMADO no Guia da Candidatura da DGES (2026): apenas Física e Química A + Matemática A, correto. Nota mínima de candidatura corrigida para 120, provas mínima 100. provas de ingresso e peso média/provas aproximados (o típico para este tipo de curso, com o padrão legal de 50%/50%) — desde 2025 a lei permite entre 40-50% para a média e 45-60% para as provas (a média nunca pode pesar mais que as provas), e cada instituição define o valor exato. Confirma sempre no Guia da Candidatura da DGES antes de decidir."
+  },
+  {
+    "id": "lisboa-ist-eng-mecanica",
+    "instituicao": "Universidade de Lisboa — Instituto Superior Técnico",
+    "curso": "Engenharia Mecânica",
+    "area": "Ciências e Tecnologias",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Física e Química A",
+        "Matemática A"
+      ]
+    ],
+    "notaCandidaturaMinima": 120,
+    "notaMinimaProvas": 100,
+    "ultimoColocado2025": 175.0,
+    "vagas": 160,
+    "nota": "Conjunto de provas de ingresso CONFIRMADO no Guia da Candidatura da DGES (2026): apenas Física e Química A + Matemática A, correto. Nota mínima de candidatura corrigida para 120, provas mínima 100. to de provas de ingresso e peso média/provas aproximados (o típico para este tipo de curso, com o padrão legal de 50%/50%) — desde 2025 a lei permite entre 40-50% para a média e 45-60% para as provas (a média nunca pode pesar mais que as provas), e cada instituição define o valor exato. Confirma sempre no Guia da Candidatura da DGES antes de decidir."
+  },
+  {
+    "id": "lisboa-ist-arquitetura",
+    "instituicao": "Universidade de Lisboa — Instituto Superior Técnico",
+    "curso": "Arquitetura",
+    "area": "Artes Visuais",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Desenho A",
+        "Geometria Descritiva A"
+      ],
+      [
+        "Geometria Descritiva A",
+        "Matemática A"
+      ],
+      [
+        "Geometria Descritiva A",
+        "Português"
+      ],
+      [
+        "Desenho A",
+        "Matemática A"
+      ],
+      [
+        "Desenho A",
+        "Português"
+      ]
+    ],
+    "notaCandidaturaMinima": 95,
+    "ultimoColocado2025": 156.8,
+    "vagas": 47,
+    "nota": "Conjunto de provas de ingresso e peso média/provas aproximados (o típico para este tipo de curso, com o padrão legal de 50%/50%) — desde 2025 a lei permite entre 40-50% para a média e 45-60% para as provas (a média nunca pode pesar mais que as provas), e cada instituição define o valor exato. Confirma sempre no Guia da Candidatura da DGES antes de decidir."
+  },
+  {
+    "id": "lisboa-ist-eng-aeroespacial",
+    "instituicao": "Universidade de Lisboa — Instituto Superior Técnico",
+    "curso": "Engenharia Aeroespacial",
+    "area": "Ciências e Tecnologias",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Física e Química A",
+        "Matemática A"
+      ]
+    ],
+    "notaCandidaturaMinima": 120,
+    "notaMinimaProvas": 100,
+    "ultimoColocado2025": 185.0,
+    "vagas": 135,
+    "nota": "Conjunto de provas de ingresso CONFIRMADO no Guia da Candidatura da DGES (2026): apenas Física e Química A + Matemática A, correto. Nota mínima de candidatura corrigida para 120, provas mínima 100 (assumido consistente com o padrão do IST — confirma no Guia da Candidatura)."
+  },
+  {
+    "id": "lisboa-ist-eng-biomedica",
+    "instituicao": "Universidade de Lisboa — Instituto Superior Técnico",
+    "curso": "Engenharia Biomédica",
+    "area": "Ciências e Tecnologias",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Física e Química A",
+        "Matemática A"
+      ]
+    ],
+    "notaCandidaturaMinima": 120,
+    "notaMinimaProvas": 100,
+    "ultimoColocado2025": 174.0,
+    "vagas": 102,
+    "nota": "Conjunto de provas de ingresso CONFIRMADO no Guia da Candidatura da DGES (2026): apenas Física e Química A + Matemática A, correto. Nota mínima de candidatura corrigida para 120, provas mínima 100 (assumido consistente com o padrão do IST — confirma no Guia da Candidatura)."
+  },
+  {
+    "id": "iscap-marketing",
+    "instituicao": "Instituto Politécnico do Porto — ISCAP",
+    "curso": "Marketing",
+    "area": "Ciências Socioeconómicas",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Matemática Aplicada às Ciências Sociais"
+      ],
+      [
+        "Português"
+      ],
+      [
+        "Economia",
+        "Português"
+      ],
+      [
+        "Geografia A",
+        "Matemática Aplicada às Ciências Sociais"
+      ],
+      [
+        "Geografia A",
+        "Português"
+      ],
+      [
+        "Matemática Aplicada às Ciências Sociais",
+        "Português"
+      ],
+      [
+        "Economia",
+        "Geografia A"
+      ],
+      [
+        "Economia",
+        "Matemática Aplicada às Ciências Sociais"
+      ]
+    ],
+    "notaCandidaturaMinima": 95,
+    "ultimoColocado2025": 146.0,
+    "vagas": 90,
+    "nota": "CORRIGIDO: o valor anterior (só Matemática A) estava errado — Matemática A nem sequer é uma das provas aceites. Confirmado no Guia da Candidatura da DGES (2026): 8 conjuntos possíveis com Matemática Aplicada às Ciências Sociais, Português, Economia e Geografia A. Verifica sempre a versão mais recente no Guia da Candidatura da DGES antes de dec 2025 a lei permite entre 40-50% para a média e 45-60% para as provas (a média nunca pode pesar mais que as provas), e cada instituição define o valor exato. Confirma sempre no Guia da Candidatura da DGES antes de decidir."
+  },
+  {
+    "id": "iscap-comercio-internacional",
+    "instituicao": "Instituto Politécnico do Porto — ISCAP",
+    "curso": "Comércio Internacional",
+    "area": "Ciências Socioeconómicas",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Economia",
+        "Matemática Aplicada às Ciências Sociais"
+      ],
+      [
+        "Economia",
+        "Português"
+      ],
+      [
+        "Matemática Aplicada às Ciências Sociais",
+        "Português"
+      ]
+    ],
+    "notaCandidaturaMinima": 95,
+    "ultimoColocado2025": 157.5,
+    "vagas": 35,
+    "nota": "CORRIGIDO: o valor anterior (só Matemática A) estava errado — Matemática A nem sequer é uma das provas aceites. Confirmado no Guia da Candidatura da DGES (2026): duas de entre Economia, Matemática Aplicada às Ciências Sociais e Português. Verifica sempre a versão mais recente no Guia da Candidatura da DGES antes de dec legal de 50%/50%) — desde 2025 a lei permite entre 40-50% para a média e 45-60% para as provas (a média nunca pode pesar mais que as provas), e cada instituição define o valor exato. Confirma sempre no Guia da Candidatura da DGES antes de decidir."
+  },
+  {
+    "id": "escs-jornalismo",
+    "instituicao": "Instituto Politécnico de Lisboa — Escola Superior de Comunicação Social",
+    "curso": "Jornalismo",
+    "area": "Línguas e Humanidades",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Filosofia",
+        "Português"
+      ],
+      [
+        "História A",
+        "Português"
+      ],
+      [
+        "Matemática A",
+        "Português"
+      ]
+    ],
+    "notaCandidaturaMinima": 95,
+    "ultimoColocado2025": 153.0,
+    "vagas": 61,
+    "nota": "Conjunto de provas de ingresso e peso média/provas aproximados (o típico para este tipo de curso, com o padrão legal de 50%/50%) — desde 2025 a lei permite entre 40-50% para a média e 45-60% para as provas (a média nunca pode pesar mais que as provas), e cada instituição define o valor exato. Confirma sempre no Guia da Candidatura da DGES antes de decidir."
+  },
+  {
+    "id": "iscal-gestao",
+    "instituicao": "Instituto Politécnico de Lisboa — ISCAL",
+    "curso": "Gestão",
+    "area": "Ciências Socioeconómicas",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Matemática A"
+      ]
+    ],
+    "notaCandidaturaMinima": 95,
+    "ultimoColocado2025": 156.0,
+    "vagas": 106,
+    "nota": "Conjunto de provas de ingresso e peso média/provas aproximados (o típico para este tipo de curso, com o padrão legal de 50%/50%) — desde 2025 a lei permite entre 40-50% para a média e 45-60% para as provas (a média nunca pode pesar mais que as provas), e cada instituição define o valor exato. Confirma sempre no Guia da Candidatura da DGES antes de decidir."
+  },
+  {
+    "id": "setubal-enfermagem",
+    "instituicao": "Instituto Politécnico de Setúbal — Escola Superior de Saúde",
+    "curso": "Enfermagem",
+    "area": "Ciências e Tecnologias",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Biologia e Geologia",
+        "Física e Química A"
+      ],
+      [
+        "Biologia e Geologia",
+        "Matemática A"
+      ],
+      [
+        "Física e Química A",
+        "Matemática A"
+      ]
+    ],
+    "notaCandidaturaMinima": 140,
+    "ultimoColocado2025": 149.3,
+    "vagas": 46,
+    "nota": "Conjunto de provas de ingresso e peso média/provas aproximados (o típico para este tipo de curso, com o padrão legal de 50%/50%) — desde 2025 a lei permite entre 40-50% para a média e 45-60% para as provas (a média nunca pode pesar mais que as provas), e cada instituição define o valor exato. Confirma sempre no Guia da Candidatura da DGES antes de decidir."
+  },
+  {
+    "id": "setubal-fisioterapia",
+    "instituicao": "Instituto Politécnico de Setúbal — Escola Superior de Saúde",
+    "curso": "Fisioterapia",
+    "area": "Ciências e Tecnologias",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Biologia e Geologia",
+        "Física e Química A"
+      ],
+      [
+        "Biologia e Geologia",
+        "Matemática A"
+      ],
+      [
+        "Física e Química A",
+        "Matemática A"
+      ]
+    ],
+    "notaCandidaturaMinima": 140,
+    "ultimoColocado2025": 153.3,
+    "vagas": 44,
+    "nota": "Conjunto de provas de ingresso e peso média/provas aproximados (o típico para este tipo de curso, com o padrão legal de 50%/50%) — desde 2025 a lei permite entre 40-50% para a média e 45-60% para as provas (a média nunca pode pesar mais que as provas), e cada instituição define o valor exato. Confirma sempre no Guia da Candidatura da DGES antes de decidir."
+  },
+  {
+    "id": "isec-eng-informatica",
+    "instituicao": "Instituto Politécnico de Coimbra — ISEC",
+    "curso": "Engenharia Informática",
+    "area": "Ciências e Tecnologias",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Física e Química A",
+        "Matemática A"
+      ]
+    ],
+    "notaCandidaturaMinima": 95,
+    "ultimoColocado2025": 111.3,
+    "vagas": 140,
+    "nota": "Conjunto de provas de ingresso e peso média/provas aproximados (o típico para este tipo de curso, com o padrão legal de 50%/50%) — desde 2025 a lei permite entre 40-50% para a média e 45-60% para as provas (a média nunca pode pesar mais que as provas), e cada instituição define o valor exato. Confirma sempre no Guia da Candidatura da DGES antes de decidir."
+  },
+  {
+    "id": "leiria-estg-eng-informatica",
+    "instituicao": "Instituto Politécnico de Leiria — ESTG",
+    "curso": "Engenharia Informática",
+    "area": "Ciências e Tecnologias",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Física e Química A",
+        "Matemática A"
+      ]
+    ],
+    "notaCandidaturaMinima": 95,
+    "ultimoColocado2025": 118.0,
+    "vagas": 125,
+    "nota": "Conjunto de provas de ingresso e peso média/provas aproximados (o típico para este tipo de curso, com o padrão legal de 50%/50%) — desde 2025 a lei permite entre 40-50% para a média e 45-60% para as provas (a média nunca pode pesar mais que as provas), e cada instituição define o valor exato. Confirma sempre no Guia da Candidatura da DGES antes de decidir."
+  },
+  {
+    "id": "leiria-esad-design-grafico",
+    "instituicao": "Instituto Politécnico de Leiria — ESAD",
+    "curso": "Design Gráfico e Multimédia",
+    "area": "Artes Visuais",
+    "pesoMedia": 0.5,
+    "pesoProvas": 0.5,
+    "conjuntosProvas": [
+      [
+        "Desenho A",
+        "Geometria Descritiva A"
+      ],
+      [
+        "Geometria Descritiva A",
+        "Matemática A"
+      ],
+      [
+        "Desenho A",
+        "Matemática A"
+      ],
+      [
+        "Desenho A",
+        "Português"
+      ]
+    ],
+    "notaCandidaturaMinima": 95,
+    "ultimoColocado2025": 153.5,
+    "vagas": 80,
+    "nota": "Conjunto de provas de ingresso e peso média/provas aproximados (o típico para este tipo de curso, com o padrão legal de 50%/50%) — desde 2025 a lei permite entre 40-50% para a média e 45-60% para as provas (a média nunca pode pesar mais que as provas), e cada instituição define o valor exato. Confirma sempre no Guia da Candidatura da DGES antes de decidir."
+  }
+];
+
+
+// script.js
+// Interface, eventos e persistência. Os dados dos cursos estão em disciplinas.js
+// e os cálculos em calculos.js (carregados antes deste ficheiro no index.html).
+
+const CHAVE_STORAGE = 'notacerta_dados';
+
+// ---- Estado ----
+let cursoAtual = '';
+let disciplinas = [];
+let proximoId = 1;
+let mediaAnterior = null;
+
+// ---- Elementos do DOM ----
+const selectCurso = document.getElementById('curso');
+const tabelaBody = document.querySelector('#tabelaNotas tbody');
+const botaoAdicionar = document.getElementById('botaoAdicionar');
+const mediaGeralSpan = document.getElementById('mediaGeral');
+const mediaPontosSpan = document.getElementById('mediaPontos');
+const maiorNotaSpan = document.getElementById('maiorNota');
+const menorNotaSpan = document.getElementById('menorNota');
+const numDisciplinasSpan = document.getElementById('numDisciplinas');
+const simDisciplinaSelect = document.getElementById('simDisciplina');
+const simMediaAlvoInput = document.getElementById('simMediaAlvo');
+const botaoSimular = document.getElementById('botaoSimular');
+const resultadoSimulacao = document.getElementById('resultadoSimulacao');
+
+// ---- Persistência (localStorage) ----
+
+function guardarDados() {
+  try {
+    localStorage.setItem(CHAVE_STORAGE, JSON.stringify({ cursoAtual, disciplinas, proximoId }));
+  } catch (e) {
+    console.error('Não foi possível guardar os dados:', e);
+  }
+}
+
+function carregarDados() {
+  try {
+    const guardado = localStorage.getItem(CHAVE_STORAGE);
+    if (!guardado) return false;
+    const dados = JSON.parse(guardado);
+    cursoAtual = dados.cursoAtual || '';
+    disciplinas = dados.disciplinas || [];
+    proximoId = dados.proximoId || 1;
+    return true;
+  } catch (e) {
+    console.error('Não foi possível carregar os dados guardados:', e);
+    return false;
+  }
+}
+
+// ---- Gestão de disciplinas ----
+
+function carregarDisciplinasDoCurso(nomeCurso) {
+  const template = CURSOS[nomeCurso] || [];
+  disciplinas = template.map(t => ({
+    id: proximoId++,
+    nome: t.nome,
+    duracao: t.duracao,
+    n10: '', n11: '', n12: '',
+    exame: '',
+    contaExame: !!t.exameFixo,
+    podeTerExame: t.podeTerExame,
+    exameFixo: !!t.exameFixo
+  }));
+}
+
+function adicionarDisciplina() {
+  disciplinas.push({
+    id: proximoId++,
+    nome: '', duracao: 'anual',
+    n10: '', n11: '', n12: '',
+    exame: '', contaExame: false,
+    podeTerExame: true, exameFixo: false
+  });
+  renderizarTudo();
+  guardarDados();
+}
+
+function removerDisciplina(id) {
+  disciplinas = disciplinas.filter(d => d.id !== id);
+  renderizarTudo();
+  guardarDados();
+}
+
+function atualizarCampo(id, campo, valor) {
+  const d = disciplinas.find(x => x.id === id);
+  if (!d) return;
+  d[campo] = valor;
+}
+
+// ---- Renderização ----
+
+function renderizarTabela() {
+  tabelaBody.innerHTML = '';
+
+  disciplinas.forEach((d) => {
+    const cif = calcularCIF(d);
+    const final = calcularNotaFinal(d);
+    const exameValores = (d.exame !== '' && !isNaN(d.exame)) ? (parseFloat(d.exame) / 10).toFixed(1) + ' val.' : '';
+
+    // Cada duração só existe nos anos indicados:
+    // trienal -> 10º, 11º e 12º | bienal -> só 10º e 11º | anual -> só 12º.
+    const anosAtivos = { trienal: ['n10', 'n11', 'n12'], bienal: ['n10', 'n11'], anual: ['n12'] }[d.duracao] || ['n10', 'n11', 'n12'];
+    const desativado10 = !anosAtivos.includes('n10') ? 'disabled placeholder="—"' : '';
+    const desativado11 = !anosAtivos.includes('n11') ? 'disabled placeholder="—"' : '';
+    const desativado12 = !anosAtivos.includes('n12') ? 'disabled placeholder="—"' : '';
+
+    const linha = document.createElement('tr');
+    linha.dataset.id = d.id;
+
+    linha.innerHTML = `
+      <td data-label="Disciplina"><input type="text" class="nome-input" data-campo="nome" value="${d.nome}" placeholder="Disciplina"></td>
+      <td data-label="Duração">
+        <select data-campo="duracao">
+          <option value="trienal" ${d.duracao === 'trienal' ? 'selected' : ''}>Trienal (×3)</option>
+          <option value="bienal" ${d.duracao === 'bienal' ? 'selected' : ''}>Bienal (×2)</option>
+          <option value="anual" ${d.duracao === 'anual' ? 'selected' : ''}>Anual (×1)</option>
+        </select>
+      </td>
+      <td data-label="10º"><input type="number" min="0" max="20" step="0.1" data-campo="n10" value="${d.n10 ?? ''}" ${desativado10}></td>
+      <td data-label="11º"><input type="number" min="0" max="20" step="0.1" data-campo="n11" value="${d.n11 ?? ''}" ${desativado11}></td>
+      <td data-label="12º"><input type="number" min="0" max="20" step="0.1" data-campo="n12" value="${d.n12 ?? ''}" ${desativado12}></td>
+      <td data-label="CIF" class="cif-valor">${cif !== null ? cif : '--'}</td>
+      <td data-label="Exame" class="exame-celula">
+        <input type="number" class="exame-input" min="0" max="200" step="1" data-campo="exame" value="${d.exame ?? ''}" placeholder="0-200">
+        <span class="exame-valores">${exameValores}</span>
+      </td>
+      <td data-label="Exame conta?"><input type="checkbox" data-campo="contaExame" ${d.contaExame ? 'checked' : ''} ${d.exameFixo ? 'disabled' : ''} ${!d.podeTerExame ? 'disabled' : ''}></td>
+      <td data-label="Nota final" class="final-valor">${final !== null ? final.toFixed(2) : '--'}</td>
+      <td data-label=""><button type="button" class="botao-remover" data-id="${d.id}">✕</button></td>
+    `;
+
+    tabelaBody.appendChild(linha);
+  });
+}
+
+function renderizarResumo() {
+  const finais = disciplinas
+    .map(d => ({ nome: d.nome || '(sem nome)', valor: calcularNotaFinal(d) }))
+    .filter(d => d.valor !== null);
+
+  const media = calcularMediaGeral(disciplinas);
+
+  // Atualizar média com cor de feedback (sobe/desce)
+  mediaGeralSpan.classList.remove('subiu', 'desceu');
+  if (media !== null && mediaAnterior !== null) {
+    if (media > mediaAnterior + 0.001) mediaGeralSpan.classList.add('subiu');
+    else if (media < mediaAnterior - 0.001) mediaGeralSpan.classList.add('desceu');
+  }
+
+  mediaGeralSpan.textContent = media !== null ? media.toFixed(2) : '--';
+  mediaPontosSpan.textContent = media !== null ? (media * 10).toFixed(0) + ' pontos' : '-- pontos';
+
+  if (media !== null && mediaAnterior !== null && Math.abs(media - mediaAnterior) > 0.001) {
+    mediaGeralSpan.classList.remove('pulso');
+    void mediaGeralSpan.offsetWidth; // força o browser a reiniciar a animação
+    mediaGeralSpan.classList.add('pulso');
+    setTimeout(() => mediaGeralSpan.classList.remove('pulso'), 300);
+  }
+
+  const barraMedia = document.getElementById('barraMedia');
+  barraMedia.style.width = media !== null ? `${Math.min(100, (media / 20) * 100)}%` : '0%';
+
+  if (finais.length > 0) {
+    const maior = finais.reduce((a, b) => (b.valor > a.valor ? b : a));
+    const menor = finais.reduce((a, b) => (b.valor < a.valor ? b : a));
+    maiorNotaSpan.textContent = `${maior.nome} (${maior.valor.toFixed(1)})`;
+    menorNotaSpan.textContent = `${menor.nome} (${menor.valor.toFixed(1)})`;
+  } else {
+    maiorNotaSpan.textContent = '--';
+    menorNotaSpan.textContent = '--';
+  }
+
+  numDisciplinasSpan.textContent = disciplinas.length;
+
+  if (media !== null) mediaAnterior = media;
+}
+
+function renderizarSimulador() {
+  const candidatas = disciplinas.filter(d => d.contaExame && d.podeTerExame);
+  simDisciplinaSelect.innerHTML = candidatas.length > 0
+    ? candidatas.map(d => `<option value="${d.id}">${d.nome || '(sem nome)'}</option>`).join('')
+    : '<option value="">Marca primeiro alguma disciplina como "Exame conta?"</option>';
+}
+
+function renderizarTudo() {
+  renderizarTabela();
+  renderizarResumo();
+  renderizarSimulador();
+}
+
+// ---- Simulador "Que nota preciso?" ----
+
+function calcularSimulacao() {
+  const idEscolhido = parseInt(simDisciplinaSelect.value, 10);
+  const mediaAlvo = parseFloat(simMediaAlvoInput.value);
+
+  resultadoSimulacao.classList.remove('ok', 'impossivel');
+
+  if (!idEscolhido || isNaN(mediaAlvo)) {
+    resultadoSimulacao.textContent = 'Escolhe uma disciplina e a média que queres atingir.';
+    return;
+  }
+
+  const disciplinaAlvo = disciplinas.find(d => d.id === idEscolhido);
+  const cifAlvo = calcularCIF(disciplinaAlvo);
+
+  if (cifAlvo === null) {
+    resultadoSimulacao.textContent = 'Preenche primeiro a CIF dessa disciplina (notas dos anos).';
+    return;
+  }
+
+  // Soma ponderada das restantes disciplinas (excluindo a escolhida)
+  const outras = disciplinas
+    .filter(d => d.id !== idEscolhido)
+    .map(d => ({ final: calcularNotaFinal(d), peso: pesoDisciplina(d) }))
+    .filter(i => i.final !== null);
+
+  const pesoAlvo = pesoDisciplina(disciplinaAlvo);
+  const somaPesos = outras.reduce((a, i) => a + i.peso, 0) + pesoAlvo;
+  const somaPonderadaOutras = outras.reduce((a, i) => a + (i.final * i.peso), 0);
+
+  // mediaAlvo = (somaPonderadaOutras + finalAlvo * pesoAlvo) / somaPesos
+  const notaFinalNecessaria = ((mediaAlvo * somaPesos) - somaPonderadaOutras) / pesoAlvo;
+
+  // notaFinalNecessaria = 0.75*CIF + 0.25*exame20  =>  exame20 = (notaFinalNecessaria - 0.75*CIF) / 0.25
+  const exame20Necessario = (notaFinalNecessaria - PESO_CIF * cifAlvo) / PESO_EXAME;
+  const exame200NecessarioBruto = exame20Necessario * 10;
+  // Arredondamos sempre para cima (nunca para baixo) porque a CFD oficial arredonda às unidades,
+  // e preferimos sugerir um valor ligeiramente seguro em vez de otimista.
+  const exame200Necessario = Math.ceil(exame200NecessarioBruto);
+
+  if (exame20Necessario <= 0) {
+    resultadoSimulacao.textContent = `Já vais conseguir essa média mesmo com 0 no exame de ${disciplinaAlvo.nome}.`;
+    resultadoSimulacao.classList.add('ok');
+  } else if (exame20Necessario > 20) {
+    resultadoSimulacao.textContent = `Mesmo com 200 pontos no exame de ${disciplinaAlvo.nome}, não chegas a essa média (faltariam ainda ${(exame20Necessario - 20).toFixed(2)} valores).`;
+    resultadoSimulacao.classList.add('impossivel');
+  } else {
+    resultadoSimulacao.textContent = `Precisas de tirar pelo menos ${exame200Necessario} pontos no exame de ${disciplinaAlvo.nome} (valor aproximado — a nota final de cada disciplina arredonda às unidades).`;
+    resultadoSimulacao.classList.add('ok');
+  }
+}
+
+// ---- Eventos ----
+
+selectCurso.addEventListener('change', () => {
+  cursoAtual = selectCurso.value;
+  if (cursoAtual) {
+    carregarDisciplinasDoCurso(cursoAtual);
+  } else {
+    disciplinas = [];
+  }
+  renderizarTudo();
+  guardarDados();
+});
+
+botaoAdicionar.addEventListener('click', adicionarDisciplina);
+
+function processarAlteracaoLinha(event) {
+  const linha = event.target.closest('tr');
+  if (!linha) return;
+  const id = parseInt(linha.dataset.id, 10);
+  const campo = event.target.dataset.campo;
+  if (!campo) return;
+
+  // Validação: notas 0-20, exame 0-200, sem negativos
+  if (event.target.type === 'number') {
+    let v = parseFloat(event.target.value);
+    if (!isNaN(v)) {
+      const limite = campo === 'exame' ? 200 : 20;
+      if (v < 0) v = 0;
+      if (v > limite) v = limite;
+      if (v !== parseFloat(event.target.value)) {
+        event.target.value = v;
+      }
+    }
+  }
+
+  const valor = event.target.type === 'checkbox' ? event.target.checked : event.target.value;
+  atualizarCampo(id, campo, valor);
+
+  // Se a duração mudou, limpa os anos que deixaram de se aplicar (ex: bienal não tem 12º)
+  // e volta a desenhar a linha toda para atualizar quais campos ficam desativados.
+  if (campo === 'duracao') {
+    const d = disciplinas.find(x => x.id === id);
+    const anosAtivos = { trienal: ['n10', 'n11', 'n12'], bienal: ['n10', 'n11'], anual: ['n12'] }[d.duracao] || ['n10', 'n11', 'n12'];
+    ['n10', 'n11', 'n12'].forEach(campoAno => {
+      if (!anosAtivos.includes(campoAno)) d[campoAno] = '';
+    });
+    renderizarTabela();
+    renderizarResumo();
+    renderizarSimulador();
+    guardarDados();
+    return;
+  }
+
+  // Recalcula só a linha + resumo, sem perder o foco do input
+  recalcularLinha(linha, id);
+  renderizarResumo();
+  renderizarSimulador();
+  guardarDados();
+}
+
+tabelaBody.addEventListener('input', processarAlteracaoLinha);
+tabelaBody.addEventListener('change', processarAlteracaoLinha);
+
+tabelaBody.addEventListener('click', (event) => {
+  if (event.target.classList.contains('botao-remover')) {
+    removerDisciplina(parseInt(event.target.dataset.id, 10));
+  }
+});
+
+botaoSimular.addEventListener('click', calcularSimulacao);
+
+function recalcularLinha(linha, id) {
+  const d = disciplinas.find(x => x.id === id);
+  const cif = calcularCIF(d);
+  const final = calcularNotaFinal(d);
+  const exameValores = (d.exame !== '' && !isNaN(d.exame)) ? (parseFloat(d.exame) / 10).toFixed(1) + ' val.' : '';
+
+  linha.querySelector('.cif-valor').textContent = cif !== null ? cif : '--';
+  linha.querySelector('.final-valor').textContent = final !== null ? final.toFixed(2) : '--';
+  linha.querySelector('.exame-valores').textContent = exameValores;
+}
+
+// ---- Landing page ----
+
+const landing = document.getElementById('landing');
+const appContainer = document.getElementById('appContainer');
+const botaoComecar = document.getElementById('botaoComecar');
+const botaoComoFunciona = document.getElementById('botaoComoFunciona');
+const comoFunciona = document.getElementById('comoFunciona');
+
+botaoComecar.addEventListener('click', () => {
+  landing.hidden = true;
+  appContainer.hidden = false;
+});
+
+botaoComoFunciona.addEventListener('click', () => {
+  comoFunciona.hidden = !comoFunciona.hidden;
+});
+
+// ---- Como calculámos a tua média ----
+
+const botaoComoCalculamos = document.getElementById('botaoComoCalculamos');
+const comoCalculamos = document.getElementById('comoCalculamos');
+
+botaoComoCalculamos.addEventListener('click', () => {
+  comoCalculamos.hidden = !comoCalculamos.hidden;
+  if (!comoCalculamos.hidden) {
+    comoCalculamos.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+});
+
+// Se já havia dados guardados de uma visita anterior, salta logo para a app
+if (localStorage.getItem(CHAVE_STORAGE)) {
+  landing.hidden = true;
+  appContainer.hidden = false;
+}
+
+// ---- Tema escuro ----
+
+const botaoTema = document.getElementById('botaoTema');
+
+function aplicarTema(escuro) {
+  document.body.classList.toggle('tema-escuro', escuro);
+  botaoTema.textContent = escuro ? '☀️' : '🌙';
+  localStorage.setItem('notacerta_tema', escuro ? 'escuro' : 'claro');
+}
+
+botaoTema.addEventListener('click', () => {
+  aplicarTema(!document.body.classList.contains('tema-escuro'));
+});
+
+aplicarTema(localStorage.getItem('notacerta_tema') === 'escuro');
+
+// ---- Menu do simulador (que nota preciso / E se / candidatura) ----
+
+const painelMeta = document.getElementById('painelMeta');
+const painelEse = document.getElementById('painelEse');
+const painelCandidatura = document.getElementById('painelCandidatura');
+
+document.querySelectorAll('input[name="modoSimulador"]').forEach(radio => {
+  radio.addEventListener('change', (event) => {
+    painelMeta.hidden = event.target.value !== 'meta';
+    painelEse.hidden = event.target.value !== 'ese';
+    painelCandidatura.hidden = event.target.value !== 'candidatura';
+    if (event.target.value === 'candidatura' && typeof renderizarListaCandidatura === 'function') {
+      renderizarListaCandidatura();
+    }
+  });
+});
+
+// ---- "E se..." — simulação não destrutiva ----
+
+const eseDisciplinaSelect = document.getElementById('eseDisciplina');
+const eseCampoSelect = document.getElementById('eseCampo');
+const eseValorInput = document.getElementById('eseValor');
+const botaoEse = document.getElementById('botaoEse');
+const resultadoEse = document.getElementById('resultadoEse');
+const eseValorAtualSpan = document.getElementById('eseValorAtual');
+
+function renderizarEseDisciplinas() {
+  eseDisciplinaSelect.innerHTML = disciplinas.length > 0
+    ? disciplinas.map(d => `<option value="${d.id}">${d.nome || '(sem nome)'}</option>`).join('')
+    : '<option value="">Adiciona uma disciplina primeiro</option>';
+  if (typeof mostrarValorAtual === 'function') mostrarValorAtual();
+}
+
+function mostrarValorAtual() {
+  const id = parseInt(eseDisciplinaSelect.value, 10);
+  const campo = eseCampoSelect.value;
+  const d = disciplinas.find(x => x.id === id);
+  if (!d) {
+    eseValorAtualSpan.textContent = '--';
+    return;
+  }
+  const valorAtual = d[campo];
+  eseValorAtualSpan.textContent = (valorAtual !== '' && valorAtual !== null && !isNaN(valorAtual))
+    ? valorAtual
+    : '(vazio)';
+  eseValorInput.value = (valorAtual !== '' && valorAtual !== null && !isNaN(valorAtual)) ? valorAtual : '';
+}
+
+eseDisciplinaSelect.addEventListener('change', mostrarValorAtual);
+eseCampoSelect.addEventListener('change', mostrarValorAtual);
+
+botaoEse.addEventListener('click', () => {
+  const id = parseInt(eseDisciplinaSelect.value, 10);
+  const campo = eseCampoSelect.value;
+  const novoValor = parseFloat(eseValorInput.value);
+
+  if (!id || isNaN(novoValor)) {
+    resultadoEse.innerHTML = '<span>Escolhe a disciplina e escreve um valor.</span>';
+    return;
+  }
+
+  const mediaAntes = calcularMediaGeral(disciplinas);
+
+  // Clona as disciplinas e aplica a alteração hipotética, sem tocar nos dados reais
+  const disciplinasSimuladas = disciplinas.map(d => d.id === id ? { ...d, [campo]: novoValor } : d);
+  const mediaDepois = calcularMediaGeral(disciplinasSimuladas);
+
+  if (mediaAntes === null || mediaDepois === null) {
+    resultadoEse.innerHTML = '<span>Preenche primeiro algumas notas para haver média para comparar.</span>';
+    return;
+  }
+
+  const delta = mediaDepois - mediaAntes;
+  const subiu = delta > 0.001;
+  const desceu = delta < -0.001;
+
+  resultadoEse.innerHTML = `
+    <span>${mediaAntes.toFixed(2)}</span>
+    <span class="seta">→</span>
+    <span class="${subiu ? 'subiu' : desceu ? 'desceu' : ''}" style="color:${subiu ? 'var(--cor-bom)' : desceu ? 'var(--cor-mau)' : 'inherit'}">${mediaDepois.toFixed(2)}</span>
+    <span class="delta ${subiu ? 'subiu' : desceu ? 'desceu' : ''}">${subiu ? '+' : ''}${delta.toFixed(2)} valores</span>
+  `;
+});
+
+// Garantir que a lista de disciplinas do "E se" também é atualizada
+const renderizarTudoOriginal = renderizarTudo;
+renderizarTudo = function () {
+  renderizarTudoOriginal();
+  renderizarEseDisciplinas();
+};
+
+// ---- Simulador de Candidatura (base de dados DGES) ----
+
+const candAreaSelect = document.getElementById('candArea');
+const candBuscaInput = document.getElementById('candBusca');
+const candUsarMediaAtualCheckbox = document.getElementById('candUsarMediaAtual');
+const candMediaManualInput = document.getElementById('candMediaManual');
+const candListaDiv = document.getElementById('candLista');
+
+function renderizarListaAreas() {
+  const areas = [...new Set(CURSOS_SUPERIORES.map(c => c.area))];
+  candAreaSelect.innerHTML = '<option value="">— Filtrar por área (opcional) —</option>' +
+    areas.map(a => `<option value="${a}">${a}</option>`).join('');
+}
+
+// Tenta encontrar, na tabela de notas do aluno, o valor de exame (0-200) escrito
+// numa disciplina com o mesmo nome de uma prova de ingresso.
+function procurarExameParaProva(nomeProva) {
+  const normalizar = s => s.toLowerCase().trim();
+  const linha = disciplinas.find(d => normalizar(d.nome) === normalizar(nomeProva));
+  if (!linha || linha.exame === null || linha.exame === '' || isNaN(linha.exame)) return null;
+  return parseFloat(linha.exame);
+}
+
+// Escolhe, de entre os conjuntos de provas alternativos de um curso, o melhor
+// conjunto que o aluno já consegue preencher automaticamente (todas as provas
+// desse conjunto têm nota na tabela). Entre os totalmente preenchidos, escolhe
+// o de média mais alta (o aluno escolheria sempre o conjunto que mais favorece).
+// Se nenhum estiver completo, devolve o conjunto com mais provas por preencher
+// já auto-detetadas, para o aluno só ter de completar o que falta.
+function escolherConjunto(curso) {
+  let melhorCompleto = null;
+  let melhorMediaCompleto = -Infinity;
+  let maisCompletoParcial = null;
+  let maisValoresParcial = -1;
+
+  curso.conjuntosProvas.forEach(conjunto => {
+    const valores = conjunto.map(prova => procurarExameParaProva(prova));
+    const preenchidos = valores.filter(v => v !== null).length;
+
+    if (preenchidos === conjunto.length) {
+      const media = valores.reduce((a, b) => a + b, 0) / valores.length;
+      if (media > melhorMediaCompleto) {
+        melhorMediaCompleto = media;
+        melhorCompleto = { conjunto, valores };
+      }
+    }
+    if (preenchidos > maisValoresParcial) {
+      maisValoresParcial = preenchidos;
+      maisCompletoParcial = { conjunto, valores };
+    }
+  });
+
+  return melhorCompleto || maisCompletoParcial;
+}
+
+function obterMedia20() {
+  if (candUsarMediaAtualCheckbox.checked) {
+    return calcularMediaGeral(disciplinas);
+  }
+  const valor = parseFloat(candMediaManualInput.value);
+  return isNaN(valor) ? null : valor;
+}
+
+function badgeProbabilidade(notaCandidatura, mediaProvas200, curso) {
+  if (notaCandidatura < curso.notaCandidaturaMinima) {
+    return { emoji: '🔴', texto: 'Improvável entrar (abaixo da nota de candidatura mínima)', cor: 'var(--cor-mau)' };
+  }
+  if (curso.notaMinimaProvas && mediaProvas200 < curso.notaMinimaProvas) {
+    return { emoji: '🔴', texto: 'Improvável entrar (abaixo da nota mínima nas provas de ingresso)', cor: 'var(--cor-mau)' };
+  }
+  const margem = notaCandidatura - curso.ultimoColocado2025;
+  if (margem >= 0) {
+    return { emoji: '🟢', texto: 'Provável entrar', cor: 'var(--cor-bom)' };
+  }
+  if (margem >= -5) {
+    return { emoji: '🟡', texto: 'Possível entrar', cor: 'var(--cor-acento)' };
+  }
+  return { emoji: '🔴', texto: 'Improvável entrar', cor: 'var(--cor-mau)' };
+}
+
+function renderizarCard(curso, media20) {
+  const escolha = escolherConjunto(curso);
+  const conjunto = escolha.conjunto;
+  const valores = escolha.valores;
+  const completo = valores.every(v => v !== null);
+
+  const provasHtml = conjunto.map((prova, i) => `
+    <span>${prova}:
+      <input type="number" min="0" max="200" step="1"
+        class="cand-prova-mini-input"
+        data-curso="${curso.id}" data-prova-indice="${i}"
+        value="${valores[i] !== null ? valores[i] : ''}" placeholder="0-200">
+    </span>
+  `).join('');
+
+  let resultadoHtml;
+  if (completo && media20 !== null) {
+    const media200 = media20 * 10;
+    const mediaProvas200 = valores.reduce((a, b) => a + b, 0) / valores.length;
+    const notaCandidatura = (media200 * curso.pesoMedia) + (mediaProvas200 * curso.pesoProvas);
+    const badge = badgeProbabilidade(notaCandidatura, mediaProvas200, curso);
+
+    resultadoHtml = `
+      <div class="cand-card-header">
+        <div>
+          <div class="cand-card-titulo">${curso.curso}</div>
+          <div class="cand-card-instituicao">${curso.instituicao}</div>
+        </div>
+        <span class="cand-badge" title="${badge.texto}">${badge.emoji}</span>
+      </div>
+      <div class="cand-card-notas">
+        <div>
+          <span class="cand-card-nota-label">A tua nota de candidatura</span>
+          <span class="cand-card-nota-valor" style="color:${badge.cor}">${notaCandidatura.toFixed(1)}</span>
+        </div>
+        <div>
+          <span class="cand-card-nota-label">Último colocado (2025)</span>
+          <span class="cand-card-nota-valor">${curso.ultimoColocado2025.toFixed(1)}</span>
+        </div>
+        <div>
+          <span class="cand-card-nota-label">Nota mínima</span>
+          <span class="cand-card-nota-valor">${curso.notaCandidaturaMinima}${curso.notaMinimaProvas ? ` <span style="font-size:0.6em; font-weight:400;">(provas: ${curso.notaMinimaProvas})</span>` : ''}</span>
+        </div>
+      </div>
+      <div class="cand-card-provas">${provasHtml}</div>
+      ${curso.nota ? `<div class="cand-card-aviso">ℹ️ ${curso.nota}</div>` : ''}
+    `;
+  } else {
+    const motivo = media20 === null
+      ? 'Preenche a tua média na secção 2 (ou escreve-a manualmente acima).'
+      : 'Faltam notas de exame para calcular — escreve-as abaixo ou preenche-as na tabela de disciplinas.';
+    resultadoHtml = `
+      <div class="cand-card-header">
+        <div>
+          <div class="cand-card-titulo">${curso.curso}</div>
+          <div class="cand-card-instituicao">${curso.instituicao}</div>
+        </div>
+        <span class="cand-badge" title="Dados insuficientes">⚪</span>
+      </div>
+      <div class="cand-card-notas">
+        <div>
+          <span class="cand-card-nota-label">Último colocado (2025)</span>
+          <span class="cand-card-nota-valor">${curso.ultimoColocado2025.toFixed(1)}</span>
+        </div>
+        <div>
+          <span class="cand-card-nota-label">Nota mínima</span>
+          <span class="cand-card-nota-valor">${curso.notaCandidaturaMinima}</span>
+        </div>
+      </div>
+      <div class="cand-card-provas">${provasHtml}</div>
+      <div class="cand-card-aviso">${motivo}</div>
+    `;
+  }
+
+  const card = document.createElement('div');
+  card.className = 'cand-card';
+  card.dataset.cursoId = curso.id;
+  card.innerHTML = resultadoHtml;
+  return card;
+}
+
+function renderizarListaCandidatura() {
+  const areaFiltro = candAreaSelect.value;
+  const busca = candBuscaInput.value.trim().toLowerCase();
+  const media20 = obterMedia20();
+
+  let lista = CURSOS_SUPERIORES.slice();
+  if (areaFiltro) lista = lista.filter(c => c.area === areaFiltro);
+  if (busca) {
+    lista = lista.filter(c =>
+      c.curso.toLowerCase().includes(busca) || c.instituicao.toLowerCase().includes(busca)
+    );
+  }
+
+  // Ordem alfabética A → Z pelo nome do curso; em caso de empate, pela instituição.
+  lista.sort((a, b) => a.curso.localeCompare(b.curso, 'pt') || a.instituicao.localeCompare(b.instituicao, 'pt'));
+
+  candListaDiv.innerHTML = '';
+  if (lista.length === 0) {
+    candListaDiv.innerHTML = '<p class="cand-sem-resultados">Nenhum curso encontrado com esse filtro.</p>';
+    return;
+  }
+
+  const fragmento = document.createDocumentFragment();
+  lista.forEach(curso => fragmento.appendChild(renderizarCard(curso, media20)));
+  candListaDiv.appendChild(fragmento);
+}
+
+candAreaSelect.addEventListener('change', renderizarListaCandidatura);
+candBuscaInput.addEventListener('input', renderizarListaCandidatura);
+candUsarMediaAtualCheckbox.addEventListener('change', () => {
+  candMediaManualInput.disabled = candUsarMediaAtualCheckbox.checked;
+  renderizarListaCandidatura();
+});
+candMediaManualInput.addEventListener('input', renderizarListaCandidatura);
+
+// Permite corrigir manualmente, num cartão específico, uma prova que não foi
+// auto-detetada (ou testar um valor hipotético) sem re-renderizar a lista toda.
+candListaDiv.addEventListener('input', (evento) => {
+  if (!evento.target.classList.contains('cand-prova-mini-input')) return;
+  const cursoId = evento.target.dataset.curso;
+  const curso = CURSOS_SUPERIORES.find(c => c.id === cursoId);
+  const card = evento.target.closest('.cand-card');
+  const media20 = obterMedia20();
+  const novoCard = renderizarCard(curso, media20);
+  // Preservar os valores que o próprio aluno acabou de escrever à mão.
+  const inputsAtuais = card.querySelectorAll('.cand-prova-mini-input');
+  const inputsNovos = novoCard.querySelectorAll('.cand-prova-mini-input');
+  inputsAtuais.forEach((input, i) => {
+    if (inputsNovos[i]) inputsNovos[i].value = input.value;
+  });
+  card.replaceWith(novoCard);
+});
+
+renderizarListaAreas();
+renderizarListaCandidatura();
+
+// ---- Arranque ----
+
+const tinhaDadosGuardados = carregarDados();
+if (tinhaDadosGuardados && cursoAtual) {
+  selectCurso.value = cursoAtual;
+}
+renderizarTudo();
+
+  </script>
+</body>
+</html>
